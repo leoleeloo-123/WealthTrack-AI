@@ -5,6 +5,7 @@ import { HistoryView } from './components/HistoryView';
 import { SnapshotForm } from './components/SnapshotForm';
 import { SettingsView } from './components/SettingsView';
 import { BulkEntryView, BulkImportItem } from './components/BulkEntryView';
+import { DataManagementView } from './components/DataManagementView';
 import { Snapshot, ViewMode, AssetItem } from './types';
 import { Button } from './components/ui/Button';
 
@@ -143,6 +144,15 @@ const App: React.FC = () => {
       const updated = prevSnapshots.filter(s => s.id !== id);
       return updated;
     });
+  };
+
+  const handleClearAllData = () => {
+    setSnapshots([]);
+    setCategories(DEFAULT_CATEGORIES);
+    setFamilyMembers(DEFAULT_MEMBERS);
+    localStorage.removeItem('wealthtrack_data');
+    localStorage.removeItem('wealthtrack_categories');
+    localStorage.removeItem('wealthtrack_members');
   };
 
   const startEdit = (snapshot: Snapshot) => {
@@ -312,6 +322,14 @@ const App: React.FC = () => {
           </button>
 
           <button 
+            onClick={() => handleNavClick('dataManagement')}
+            className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'dataManagement' && !isFormOpen ? 'bg-secondary text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+            Data Management
+          </button>
+
+          <button 
             onClick={() => handleNavClick('settings')}
             className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'settings' && !isFormOpen ? 'bg-secondary text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}
           >
@@ -336,7 +354,9 @@ const App: React.FC = () => {
               {isFormOpen ? (editingSnapshot ? 'Edit Snapshot' : 'New Snapshot') : (
                 view === 'dashboard' ? 'Overview' : 
                 view === 'history' ? 'Asset History' : 
-                view === 'bulk' ? 'Bulk Data Import' : 'Settings'
+                view === 'bulk' ? 'Bulk Data Import' : 
+                view === 'dataManagement' ? 'Data Management' :
+                'Settings'
               )}
             </h2>
             <p className="text-slate-500 text-sm mt-1">
@@ -344,6 +364,7 @@ const App: React.FC = () => {
                  view === 'dashboard' ? 'Track, analyze, and optimize your wealth.' :
                  view === 'history' ? 'View and manage your historical records.' :
                  view === 'bulk' ? 'Paste and import large datasets from Excel.' :
+                 view === 'dataManagement' ? 'Backup, export, or reset your data.' :
                  'Configure your asset categories and family members.'
                )}
             </p>
@@ -386,7 +407,6 @@ const App: React.FC = () => {
                 onAddMember={handleAddMember}
                 onRenameMember={handleRenameMember}
                 onDeleteMember={handleDeleteMember}
-                snapshots={snapshots}
               />
             )}
              {view === 'bulk' && (
@@ -394,6 +414,12 @@ const App: React.FC = () => {
                 categories={categories}
                 familyMembers={familyMembers}
                 onImport={handleBulkImport}
+              />
+            )}
+            {view === 'dataManagement' && (
+              <DataManagementView 
+                snapshots={snapshots}
+                onClearAllData={handleClearAllData}
               />
             )}
           </>

@@ -22,4 +22,4 @@ export interface ChartDataPoint {
   [key: string]: number | string; // Dynamic keys for breakdown
 }
 
-export type ViewMode = 'dashboard' | 'history' | 'analysis' | 'settings' | 'bulk';
+export type ViewMode = 'dashboard' | 'history' | 'analysis' | 'settings' | 'bulk' | 'dataManagement';

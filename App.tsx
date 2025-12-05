@@ -346,6 +346,7 @@ const App: React.FC = () => {
                 onAddMember={handleAddMember}
                 onRenameMember={handleRenameMember}
                 onDeleteMember={handleDeleteMember}
+                snapshots={snapshots}
               />
             )}
              {view === 'bulk' && (

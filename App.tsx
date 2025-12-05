@@ -19,6 +19,7 @@ const App: React.FC = () => {
   const [editingSnapshot, setEditingSnapshot] = useState<Snapshot | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Load from local storage
   useEffect(() => {
@@ -147,11 +148,19 @@ const App: React.FC = () => {
   const startEdit = (snapshot: Snapshot) => {
     setEditingSnapshot(snapshot);
     setIsFormOpen(true);
+    setMobileMenuOpen(false); // Close menu on mobile if open
   };
 
   const startNew = () => {
     setEditingSnapshot(null);
     setIsFormOpen(true);
+    setMobileMenuOpen(false); // Close menu on mobile if open
+  };
+
+  const handleNavClick = (mode: ViewMode) => {
+    setView(mode);
+    setIsFormOpen(false);
+    setMobileMenuOpen(false); // Auto close menu on mobile
   };
 
   const handleBulkImport = (importItems: BulkImportItem[]) => {
@@ -239,17 +248,47 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-primary text-white flex-shrink-0 flex flex-col">
-        <div className="p-6 border-b border-slate-700">
-          <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
-            WealthTrack AI
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">Smart Family Asset Tracker</p>
+      <aside className="w-full md:w-64 bg-primary text-white flex-shrink-0 flex flex-col transition-all duration-300 ease-in-out">
+        <div className="p-6 border-b border-slate-700 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
+              WealthTrack AI
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">Smart Family Asset Tracker</p>
+          </div>
+          
+          {/* Mobile Controls */}
+          <div className="flex items-center gap-2 md:hidden">
+            {/* Small + Button (Visible when menu is collapsed, or even when open for quick access) */}
+             <button
+               onClick={startNew}
+               className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-full shadow-lg transition-transform active:scale-95 flex items-center justify-center"
+               title="New Snapshot"
+             >
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+             </button>
+
+            {/* Expand/Collapse Chevron */}
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="text-slate-300 hover:text-white p-1"
+            >
+              <svg 
+                className={`w-6 h-6 transition-transform duration-300 ${mobileMenuOpen ? 'rotate-180' : ''}`} 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2">
+        {/* Nav Links - Hidden on Mobile unless expanded */}
+        <nav className={`flex-1 p-4 space-y-2 ${mobileMenuOpen ? 'block' : 'hidden'} md:block`}>
           <button 
-            onClick={() => { setView('dashboard'); setIsFormOpen(false); }}
+            onClick={() => handleNavClick('dashboard')}
             className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'dashboard' && !isFormOpen ? 'bg-secondary text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -257,7 +296,7 @@ const App: React.FC = () => {
           </button>
           
           <button 
-            onClick={() => { setView('history'); setIsFormOpen(false); }}
+            onClick={() => handleNavClick('history')}
             className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'history' && !isFormOpen ? 'bg-secondary text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -265,7 +304,7 @@ const App: React.FC = () => {
           </button>
 
           <button 
-            onClick={() => { setView('bulk'); setIsFormOpen(false); }}
+            onClick={() => handleNavClick('bulk')}
             className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'bulk' && !isFormOpen ? 'bg-secondary text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -273,7 +312,7 @@ const App: React.FC = () => {
           </button>
 
           <button 
-            onClick={() => { setView('settings'); setIsFormOpen(false); }}
+            onClick={() => handleNavClick('settings')}
             className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'settings' && !isFormOpen ? 'bg-secondary text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -281,7 +320,8 @@ const App: React.FC = () => {
           </button>
         </nav>
 
-        <div className="p-4 border-t border-slate-700">
+        {/* Footer / Desktop New Snapshot Button - Hidden on Mobile unless expanded */}
+        <div className={`p-4 border-t border-slate-700 ${mobileMenuOpen ? 'block' : 'hidden'} md:block`}>
            <Button onClick={startNew} className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 text-white border-0">
              + New Snapshot
            </Button>

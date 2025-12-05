@@ -260,11 +260,14 @@ const App: React.FC = () => {
       {/* Sidebar Navigation */}
       <aside className="w-full md:w-64 bg-primary text-white flex-shrink-0 flex flex-col transition-all duration-300 ease-in-out">
         <div className="p-6 border-b border-slate-700 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
-              WealthTrack AI
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">Smart Family Asset Tracker</p>
+          <div className="flex items-center gap-3">
+            <img src="/logo.svg" alt="App Logo" className="w-10 h-10 rounded-xl shadow-lg bg-white/10" />
+            <div>
+              <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-blue-400">
+                WealthTrack
+              </h1>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest">AI Powered</p>
+            </div>
           </div>
           
           {/* Mobile Controls */}

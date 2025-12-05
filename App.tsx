@@ -12,6 +12,21 @@ import { Button } from './components/ui/Button';
 const DEFAULT_CATEGORIES = ['Bank', 'Stock', 'Real Estate', 'Crypto', 'Bond', 'Loan', 'Vehicle', 'Cash', 'Other'];
 const DEFAULT_MEMBERS = ['Me'];
 
+// Inline Logo Component to ensure it always renders correctly without 404s
+const Logo = () => (
+  <svg className="w-10 h-10 rounded-xl shadow-lg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="logo_grad_mini" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#1e3a8a" />
+        <stop offset="100%" stopColor="#10b981" />
+      </linearGradient>
+    </defs>
+    <rect width="512" height="512" fill="url(#logo_grad_mini)" />
+    <path d="M0 320 L120 250 L220 300 L350 150 L450 180 L512 100" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="40" strokeLinecap="round" strokeLinejoin="round"/>
+    <text x="50%" y="54%" fontFamily="sans-serif" fontSize="300" fontWeight="bold" fill="white" textAnchor="middle" dominantBaseline="middle">$</text>
+  </svg>
+);
+
 const App: React.FC = () => {
   const [view, setView] = useState<ViewMode>('dashboard');
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
@@ -261,7 +276,7 @@ const App: React.FC = () => {
       <aside className="w-full md:w-64 bg-primary text-white flex-shrink-0 flex flex-col transition-all duration-300 ease-in-out">
         <div className="p-6 border-b border-slate-700 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <img src="/logo.svg" alt="App Logo" className="w-10 h-10 rounded-xl shadow-lg bg-white/10" />
+            <Logo />
             <div>
               <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-blue-400">
                 WealthTrack

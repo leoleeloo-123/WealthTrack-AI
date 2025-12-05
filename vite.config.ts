@@ -7,8 +7,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // This maps process.env.API_KEY to the build environment variable for compatibility
-      'process.env.API_KEY': JSON.stringify(env.API_KEY)
+      // Safely map the process.env.API_KEY. 
+      // JSON.stringify ensures it's treated as a string literal in the client code.
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || '')
     }
   }
 })

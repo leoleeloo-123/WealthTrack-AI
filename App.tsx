@@ -14,6 +14,43 @@ import { translations } from './utils/translations';
 const DEFAULT_CATEGORIES = ['Bank', 'Stock', 'Real Estate', 'Crypto', 'Bond', 'Loan', 'Vehicle', 'Cash', 'Other'];
 const DEFAULT_MEMBERS = ['Me'];
 
+// --- Translation Maps ---
+const EN_TO_ZH: Record<string, string> = {
+  'Bank': '银行',
+  'Stock': '股票',
+  'Real Estate': '房地产',
+  'Crypto': '加密货币',
+  'Bond': '债券',
+  'Loan': '贷款',
+  'Vehicle': '车辆',
+  'Cash': '现金',
+  'Other': '其他',
+  'Fixed Income': '固定收益',
+  'Private Loan': '私人贷款',
+  'Me': '我',
+  'Dad': '爸爸',
+  'Mom': '妈妈',
+  'Kid': '孩子'
+};
+
+const ZH_TO_EN: Record<string, string> = {
+  '银行': 'Bank',
+  '股票': 'Stock',
+  '房地产': 'Real Estate',
+  '加密货币': 'Crypto',
+  '债券': 'Bond',
+  '贷款': 'Loan',
+  '车辆': 'Vehicle',
+  '现金': 'Cash',
+  '其他': 'Other',
+  '固定收益': 'Fixed Income',
+  '私人贷款': 'Private Loan',
+  '我': 'Me',
+  '爸爸': 'Dad',
+  '妈妈': 'Mom',
+  '孩子': 'Kid'
+};
+
 const Logo = () => (
   <svg className="w-10 h-10 rounded-xl shadow-lg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -91,6 +128,37 @@ const App: React.FC = () => {
   }, [theme]);
 
   // --- Handlers ---
+
+  const handleSetLanguage = (newLang: Language) => {
+    if (newLang === language) return;
+
+    // Determine Mapping
+    let mapping: Record<string, string> = {};
+    if (language === 'en' && newLang === 'zh') mapping = EN_TO_ZH;
+    else if (language === 'zh' && newLang === 'en') mapping = ZH_TO_EN;
+
+    // 1. Translate Categories (Deduplicate)
+    const newCategories = Array.from(new Set(categories.map(c => mapping[c] || c)));
+
+    // 2. Translate Family Members (Deduplicate)
+    const newMembers = Array.from(new Set(familyMembers.map(m => mapping[m] || m)));
+
+    // 3. Translate Snapshots
+    const newSnapshots = snapshots.map(s => ({
+      ...s,
+      familyMember: mapping[s.familyMember] || s.familyMember,
+      items: s.items.map(i => ({
+        ...i,
+        category: mapping[i.category] || i.category
+      }))
+    }));
+
+    // Update State
+    setCategories(newCategories);
+    setFamilyMembers(newMembers);
+    setSnapshots(newSnapshots);
+    setLanguage(newLang);
+  };
 
   const handleAddCategory = (name: string) => { if (!categories.includes(name)) setCategories([...categories, name]); };
   const handleDeleteCategory = (name: string) => { setCategories(categories.filter(c => c !== name)); };
@@ -320,7 +388,7 @@ const App: React.FC = () => {
                 theme={theme}
                 onSetTheme={setTheme}
                 language={language}
-                onSetLanguage={setLanguage}
+                onSetLanguage={handleSetLanguage}
               />
             )}
              {view === 'bulk' && (

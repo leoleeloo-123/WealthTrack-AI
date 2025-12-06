@@ -1,11 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 import { Snapshot, Language } from "../types";
 
+// In Vite, this process.env.API_KEY is replaced by the string value defined in vite.config.ts
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
 export const analyzeFinancialData = async (snapshots: Snapshot[], filterCategory?: string, language: Language = 'en'): Promise<string> => {
-  if (!apiKey) return language === 'zh' ? "API 密钥缺失，请检查配置。" : "API Key is missing. Please check your environment configuration.";
+  if (!apiKey) {
+    console.warn("Gemini API Key is missing. Please ensure 'API_KEY' is set in your Vercel Project Settings (Environment Variables).");
+    return language === 'zh' ? "API 密钥缺失，请检查配置。" : "API Key is missing. Please check your environment configuration.";
+  }
 
   // Prepare a summarized version of data to save tokens
   const summary = snapshots.map(s => ({

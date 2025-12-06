@@ -11,6 +11,7 @@ export const translations: Translations = {
     // Navigation & Layout
     dashboard: "Dashboard",
     history: "History & Data",
+    masterDatabase: "Master Database",
     bulkImport: "Bulk Import",
     dataManagement: "Data Management",
     settings: "Settings",
@@ -44,6 +45,11 @@ export const translations: Translations = {
     delete: "Delete",
     noRecords: "No records found matching your filter.",
     filterPlaceholder: "Filter by name, category, member or date...",
+
+    // Master Database
+    masterDbDesc: "A pivot-table view of your assets over time.",
+    subTotal: "Sub Total",
+    normalizedNote: "Values are normalized to approx. USD for aggregation.",
 
     // Form
     date: "Date",
@@ -99,6 +105,7 @@ export const translations: Translations = {
     // Navigation & Layout
     dashboard: "仪表盘",
     history: "历史数据",
+    masterDatabase: "总数据库",
     bulkImport: "批量导入",
     dataManagement: "数据管理",
     settings: "设置",
@@ -132,6 +139,11 @@ export const translations: Translations = {
     delete: "删除",
     noRecords: "未找到匹配记录。",
     filterPlaceholder: "搜索名称、类别、成员或日期...",
+
+    // Master Database
+    masterDbDesc: "资产随时间变化的透视表视图。",
+    subTotal: "小计",
+    normalizedNote: "数值已折算为约合美元以便汇总。",
 
     // Form
     date: "日期",

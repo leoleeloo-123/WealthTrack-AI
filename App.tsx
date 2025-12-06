@@ -6,6 +6,7 @@ import { SnapshotForm } from './components/SnapshotForm';
 import { SettingsView } from './components/SettingsView';
 import { BulkEntryView, BulkImportItem } from './components/BulkEntryView';
 import { DataManagementView } from './components/DataManagementView';
+import { MasterDatabaseView } from './components/MasterDatabaseView';
 import { Snapshot, ViewMode, AssetItem, Language, Theme } from './types';
 import { Button } from './components/ui/Button';
 import { translations } from './utils/translations';
@@ -213,6 +214,11 @@ const App: React.FC = () => {
             {t.history}
           </button>
 
+          <button onClick={() => handleNavClick('masterDatabase')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'masterDatabase' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+            {t.masterDatabase}
+          </button>
+
           <button onClick={() => handleNavClick('bulk')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'bulk' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             {t.bulkImport}
@@ -243,6 +249,7 @@ const App: React.FC = () => {
               {isFormOpen ? (editingSnapshot ? t.editSnapshot : t.newSnapshot) : (
                 view === 'dashboard' ? t.overview : 
                 view === 'history' ? t.assetHistory : 
+                view === 'masterDatabase' ? t.masterDatabase : 
                 view === 'bulk' ? t.bulkDataImport : 
                 view === 'dataManagement' ? t.dataManagement :
                 t.settings
@@ -252,6 +259,7 @@ const App: React.FC = () => {
                {isFormOpen ? t.formDesc : (
                  view === 'dashboard' ? 'Track, analyze, and optimize your wealth.' :
                  view === 'history' ? 'View and manage your historical records.' :
+                 view === 'masterDatabase' ? t.masterDbDesc :
                  view === 'bulk' ? t.bulkDesc :
                  view === 'dataManagement' ? t.backupDesc :
                  'Configure your asset categories and family members.'
@@ -288,6 +296,14 @@ const App: React.FC = () => {
                 familyMembers={familyMembers}
                 onEdit={startEdit} 
                 onDelete={handleDeleteSnapshot} 
+                language={language}
+              />
+            )}
+             {view === 'masterDatabase' && (
+              <MasterDatabaseView 
+                snapshots={snapshots} 
+                availableCategories={categories}
+                familyMembers={familyMembers}
                 language={language}
               />
             )}

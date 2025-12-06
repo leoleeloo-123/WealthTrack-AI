@@ -46,7 +46,7 @@ const renderCustomLabel = (props: any) => {
   );
 };
 
-export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCategories, familyMembers, language }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => {
   const [activeAnalysis, setActiveAnalysis] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('All');
@@ -58,6 +58,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
   const [activeIndex, setActiveIndex] = useState(0);
 
   const t = translations[language];
+
+  // 0. Derive Filter Options from Data (Only show what exists)
+  const { usedMembers, usedCategories, usedMonths } = useMemo(() => {
+    const members = new Set<string>();
+    const cats = new Set<string>();
+    const months = new Set<string>();
+
+    snapshots.forEach(s => {
+      if (s.familyMember) members.add(s.familyMember);
+      if (s.date) months.add(s.date.substring(0, 7)); // YYYY-MM
+      s.items.forEach(i => {
+        if (i.category && i.category.trim() !== '') {
+          cats.add(i.category);
+        }
+      });
+    });
+
+    return {
+      usedMembers: Array.from(members).sort(),
+      usedCategories: Array.from(cats).sort(),
+      usedMonths: Array.from(months).sort().reverse() // Newest first
+    };
+  }, [snapshots]);
 
   // 1. Prepare Time Series Data with Currency Normalization AND Date Filtering (Area Chart)
   const chartData = useMemo(() => {
@@ -140,17 +163,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
     return { data, date: latestDate };
   }, [snapshots, filterCategory, filterMember, filterStartDate, filterEndDate]);
 
-  // 3. Extract unique categories ONLY from historical data (for Dropdown)
-  const displayCategories = useMemo(() => {
-    const historicalCats = new Set<string>();
-    snapshots.forEach(s => s.items.forEach(i => {
-      if (i.category && i.category.trim() !== '') {
-        historicalCats.add(i.category);
-      }
-    }));
-    return ['All', ...Array.from(historicalCats).sort()];
-  }, [snapshots]);
-
   // Keys for Bar Chart
   const dataKeys = useMemo(() => {
     if (chartData.length === 0) return [];
@@ -167,11 +179,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
     setActiveIndex(index);
   };
 
+  // Auto-reset filters if they no longer exist
   useEffect(() => {
-    if (filterCategory !== 'All' && !displayCategories.includes(filterCategory)) {
-      setFilterCategory('All');
-    }
-  }, [displayCategories, filterCategory]);
+    if (filterCategory !== 'All' && !usedCategories.includes(filterCategory)) setFilterCategory('All');
+    if (filterMember !== 'All' && !usedMembers.includes(filterMember)) setFilterMember('All');
+  }, [usedCategories, usedMembers, filterCategory, filterMember]);
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
@@ -187,17 +199,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
   };
 
   const colors = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#06b6d4", "#84cc16"];
-
-  if (snapshots.length === 0) {
-    return (
-      <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
-        <h2 className="text-xl text-slate-700 dark:text-slate-200 font-semibold mb-2">{t.noData}</h2>
-        <p className="text-slate-500 dark:text-slate-400">
-            {t.startByAdding} <span className="font-medium text-blue-600 dark:text-blue-400">{t.newSnapshot}</span> {t.orUse} <span className="font-medium text-blue-600 dark:text-blue-400">{t.bulkImport}</span>.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -215,7 +216,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
                     className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
                 >
                     <option value="All">{t.allFamily}</option>
-                    {familyMembers.map(m => <option key={m} value={m}>{m}</option>)}
+                    {usedMembers.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
             </div>
 
@@ -228,35 +229,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
                     className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
                 >
                     <option value="All">All</option>
-                    {displayCategories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                    {usedCategories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
             </div>
 
             {/* Date Range: From */}
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.from}:</span>
-                <input 
-                  type="month" 
+                <select 
                   value={filterStartDate}
                   onChange={(e) => setFilterStartDate(e.target.value)}
                   className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
-                />
+                >
+                  <option value="">--</option>
+                  {usedMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
             </div>
 
             {/* Date Range: To */}
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.to}:</span>
-                <input 
-                  type="month" 
+                <select 
                   value={filterEndDate}
                   onChange={(e) => setFilterEndDate(e.target.value)}
                   className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
-                />
+                >
+                  <option value="">--</option>
+                  {usedMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
             </div>
             
-            {(filterStartDate || filterEndDate) && (
+            {(filterStartDate || filterEndDate || filterCategory !== 'All' || filterMember !== 'All') && (
                <button 
-                 onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
+                 onClick={() => { setFilterStartDate(''); setFilterEndDate(''); setFilterCategory('All'); setFilterMember('All'); }}
                  className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                  title="Clear Dates"
                >
@@ -429,6 +434,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
                              </>
                            );
                          })()}
+                     </div>
+                 )}
+                 {snapshots.length === 0 && (
+                     <div className="text-center py-10">
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">
+                            {t.startByAdding} <span className="font-medium text-blue-600 dark:text-blue-400">{t.newSnapshot}</span>.
+                        </p>
                      </div>
                  )}
              </div>

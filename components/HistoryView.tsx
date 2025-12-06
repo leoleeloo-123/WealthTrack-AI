@@ -5,8 +5,8 @@ import { translations } from '../utils/translations';
 
 interface HistoryViewProps {
   snapshots: Snapshot[];
-  availableCategories: string[];
-  familyMembers: string[];
+  availableCategories: string[]; // Kept for prop compatibility, but unused for filtering options
+  familyMembers: string[];      // Kept for prop compatibility, but unused for filtering options
   onEdit: (s: Snapshot) => void;
   onDelete: (id: string) => void;
   language: Language;
@@ -14,8 +14,6 @@ interface HistoryViewProps {
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ 
   snapshots, 
-  availableCategories,
-  familyMembers,
   onEdit, 
   onDelete, 
   language 
@@ -26,6 +24,29 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   const [filterEndDate, setFilterEndDate] = useState('');
 
   const t = translations[language];
+
+  // 0. Derive Filter Options from Data (Only show what exists)
+  const { usedMembers, usedCategories, usedMonths } = useMemo(() => {
+    const members = new Set<string>();
+    const cats = new Set<string>();
+    const months = new Set<string>();
+
+    snapshots.forEach(s => {
+      if (s.familyMember) members.add(s.familyMember);
+      if (s.date) months.add(s.date.substring(0, 7)); // YYYY-MM
+      s.items.forEach(i => {
+        if (i.category && i.category.trim() !== '') {
+          cats.add(i.category);
+        }
+      });
+    });
+
+    return {
+      usedMembers: Array.from(members).sort(),
+      usedCategories: Array.from(cats).sort(),
+      usedMonths: Array.from(months).sort().reverse() // Newest first
+    };
+  }, [snapshots]);
   
   // Sort chronological
   const sortedSnapshots = useMemo(() => {
@@ -71,7 +92,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                     className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
                 >
                     <option value="All">{t.allFamily}</option>
-                    {familyMembers.map(m => <option key={m} value={m}>{m}</option>)}
+                    {usedMembers.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
             </div>
 
@@ -84,30 +105,34 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                     className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
                 >
                     <option value="All">All</option>
-                    {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                    {usedCategories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
             </div>
 
             {/* Date Range: From */}
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.from}:</span>
-                <input 
-                  type="month" 
+                <select 
                   value={filterStartDate}
                   onChange={(e) => setFilterStartDate(e.target.value)}
                   className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
-                />
+                >
+                  <option value="">--</option>
+                  {usedMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
             </div>
 
             {/* Date Range: To */}
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.to}:</span>
-                <input 
-                  type="month" 
+                <select 
                   value={filterEndDate}
                   onChange={(e) => setFilterEndDate(e.target.value)}
                   className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
-                />
+                >
+                  <option value="">--</option>
+                  {usedMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
             </div>
 
              {(filterStartDate || filterEndDate || filterCategory !== 'All' || filterMember !== 'All') && (

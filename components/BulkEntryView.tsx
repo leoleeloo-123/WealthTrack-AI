@@ -84,6 +84,8 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
     setStagedItems([]);
     setInputText('');
     setStep('input');
+    // Scroll to top of the main container
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const inputStyle = "px-2 py-1 border border-slate-200 dark:border-slate-600 rounded text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700";
@@ -116,6 +118,13 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
       {step === 'review' && (
         <Card title={`${t.reviewImport} (${stagedItems.length})`} className="animate-fade-in">
           <div className="space-y-4">
+            
+            {/* Actions Moved to Top */}
+            <div className="flex justify-end gap-3 pb-4 border-b border-slate-100 dark:border-slate-700">
+              <Button variant="secondary" onClick={() => setStep('input')}>{t.back}</Button>
+              <Button onClick={doImport} className="bg-emerald-600 hover:bg-emerald-700">{t.importItems}</Button>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-700 dark:text-slate-300">
                 <thead>
@@ -193,11 +202,6 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
                   ))}
                 </tbody>
               </table>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
-              <Button variant="secondary" onClick={() => setStep('input')}>{t.back}</Button>
-              <Button onClick={doImport} className="bg-emerald-600 hover:bg-emerald-700">{t.importItems}</Button>
             </div>
           </div>
         </Card>

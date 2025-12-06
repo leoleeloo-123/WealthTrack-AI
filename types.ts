@@ -16,13 +16,22 @@ export interface Snapshot {
   totalValue: number; // This is a raw sum, simplified for now
 }
 
+export interface IncomeRecord {
+  id: string;
+  date: string;
+  category: string; // e.g., "Dividend", "Interest", "Rent"
+  name: string;     // e.g., "Apple Stock", "US T-Bill"
+  value: number;
+  currency: string;
+}
+
 export interface ChartDataPoint {
   date: string;
   total: number;
   [key: string]: number | string; // Dynamic keys for breakdown
 }
 
-export type ViewMode = 'dashboard' | 'history' | 'masterDatabase' | 'analysis' | 'settings' | 'bulk' | 'dataManagement';
+export type ViewMode = 'dashboard' | 'history' | 'masterDatabase' | 'investmentIncome' | 'analysis' | 'settings' | 'bulk' | 'dataManagement';
 
 export type Language = 'en' | 'zh';
 export type Theme = 'light' | 'dark';

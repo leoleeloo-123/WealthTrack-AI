@@ -12,6 +12,7 @@ export const translations: Translations = {
     dashboard: "Dashboard",
     history: "History & Data",
     masterDatabase: "Master Database",
+    investmentIncome: "Investment Income",
     bulkImport: "Bulk Import",
     dataManagement: "Data Management",
     settings: "Settings",
@@ -51,6 +52,17 @@ export const translations: Translations = {
     subTotal: "Sub Total",
     normalizedNote: "Values are normalized to approx. USD for aggregation.",
 
+    // Investment Income
+    incomeOverview: "Income Overview",
+    incomeHistory: "Income History",
+    incomeBreakdown: "Income Breakdown",
+    totalIncome: "Total Income (All Time)",
+    ytdIncome: "YTD Income",
+    monthlyAvg: "Monthly Average",
+    incomeDesc: "Track dividends, interest, and other investment earnings.",
+    recentIncome: "Recent Income Records",
+    source: "Source",
+
     // Form
     date: "Date",
     note: "Note (Optional)",
@@ -75,6 +87,10 @@ export const translations: Translations = {
     name: "Name",
     value: "Value",
     currency: "Currency",
+    importType: "Import Type",
+    assetSnapshots: "Asset Snapshots",
+    incomeRecords: "Investment Income",
+    incomeFormat: "Expected format: Date | Category | Name | Value",
     
     // Data Management
     dataBackup: "Data Backup",
@@ -106,6 +122,7 @@ export const translations: Translations = {
     dashboard: "仪表盘",
     history: "历史数据",
     masterDatabase: "总数据库",
+    investmentIncome: "投资收入",
     bulkImport: "批量导入",
     dataManagement: "数据管理",
     settings: "设置",
@@ -145,6 +162,17 @@ export const translations: Translations = {
     subTotal: "小计",
     normalizedNote: "数值已折算为约合美元以便汇总。",
 
+    // Investment Income
+    incomeOverview: "收入概览",
+    incomeHistory: "收入历史",
+    incomeBreakdown: "收入分布",
+    totalIncome: "总收入 (累计)",
+    ytdIncome: "今年收入 (YTD)",
+    monthlyAvg: "月均收入",
+    incomeDesc: "追踪股息、利息和其他投资收益。",
+    recentIncome: "近期收入记录",
+    source: "来源",
+
     // Form
     date: "日期",
     note: "备注 (可选)",
@@ -169,6 +197,10 @@ export const translations: Translations = {
     name: "名称",
     value: "金额",
     currency: "货币",
+    importType: "导入类型",
+    assetSnapshots: "资产快照 (Asset Snapshots)",
+    incomeRecords: "投资收入 (Investment Income)",
+    incomeFormat: "预期格式: 日期 | 类别 | 名称 | 金额",
 
     // Data Management
     dataBackup: "数据备份",

@@ -7,7 +7,8 @@ import { SettingsView } from './components/SettingsView';
 import { BulkEntryView, BulkImportItem } from './components/BulkEntryView';
 import { DataManagementView } from './components/DataManagementView';
 import { MasterDatabaseView } from './components/MasterDatabaseView';
-import { Snapshot, ViewMode, AssetItem, Language, Theme } from './types';
+import { InvestmentIncomeView } from './components/InvestmentIncomeView';
+import { Snapshot, ViewMode, AssetItem, Language, Theme, IncomeRecord } from './types';
 import { Button } from './components/ui/Button';
 import { translations } from './utils/translations';
 
@@ -68,6 +69,7 @@ const Logo = () => (
 const App: React.FC = () => {
   const [view, setView] = useState<ViewMode>('dashboard');
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [incomeRecords, setIncomeRecords] = useState<IncomeRecord[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [familyMembers, setFamilyMembers] = useState<string[]>([]);
   
@@ -87,6 +89,9 @@ const App: React.FC = () => {
     // Data
     const savedData = localStorage.getItem('wealthtrack_data');
     if (savedData) setSnapshots(JSON.parse(savedData) || []);
+    
+    const savedIncome = localStorage.getItem('wealthtrack_income');
+    if (savedIncome) setIncomeRecords(JSON.parse(savedIncome) || []);
 
     // Configs
     const savedCats = localStorage.getItem('wealthtrack_categories');
@@ -107,6 +112,7 @@ const App: React.FC = () => {
 
   // Persistence Effects
   useEffect(() => { if (isLoaded) localStorage.setItem('wealthtrack_data', JSON.stringify(snapshots)); }, [snapshots, isLoaded]);
+  useEffect(() => { if (isLoaded) localStorage.setItem('wealthtrack_income', JSON.stringify(incomeRecords)); }, [incomeRecords, isLoaded]);
   useEffect(() => { if (isLoaded) localStorage.setItem('wealthtrack_categories', JSON.stringify(categories)); }, [categories, isLoaded]);
   useEffect(() => { if (isLoaded) localStorage.setItem('wealthtrack_members', JSON.stringify(familyMembers)); }, [familyMembers, isLoaded]);
   
@@ -191,9 +197,11 @@ const App: React.FC = () => {
 
   const handleClearAllData = () => {
     setSnapshots([]);
+    setIncomeRecords([]);
     setCategories(DEFAULT_CATEGORIES);
     setFamilyMembers(DEFAULT_MEMBERS);
     localStorage.removeItem('wealthtrack_data');
+    localStorage.removeItem('wealthtrack_income');
     localStorage.removeItem('wealthtrack_categories');
     localStorage.removeItem('wealthtrack_members');
   };
@@ -245,6 +253,18 @@ const App: React.FC = () => {
     setView('history');
   };
 
+  const handleImportIncome = (items: IncomeRecord[]) => {
+    // Add logic to overwrite specific dates if needed, but for income usually we append or merge
+    // For simplicity, we just append unique records or simple merge. 
+    // Let's filter out exact duplicates (same date, name, category, value) just in case
+    const existingSignatures = new Set(incomeRecords.map(r => `${r.date}-${r.category}-${r.name}-${r.value}`));
+    
+    const newItems = items.filter(r => !existingSignatures.has(`${r.date}-${r.category}-${r.name}-${r.value}`));
+    
+    setIncomeRecords([...incomeRecords, ...newItems]);
+    setView('investmentIncome');
+  };
+
   return (
     <div className={`min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col md:flex-row transition-colors duration-300`}>
       <aside className="w-full md:w-64 bg-primary dark:bg-slate-950 text-white flex-shrink-0 flex flex-col transition-all duration-300 ease-in-out border-r border-slate-700">
@@ -287,6 +307,12 @@ const App: React.FC = () => {
             {t.masterDatabase}
           </button>
 
+          {/* New Investment Income Link */}
+          <button onClick={() => handleNavClick('investmentIncome')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'investmentIncome' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+            {t.investmentIncome}
+          </button>
+
           <button onClick={() => handleNavClick('bulk')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'bulk' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             {t.bulkImport}
@@ -318,6 +344,7 @@ const App: React.FC = () => {
                 view === 'dashboard' ? t.overview : 
                 view === 'history' ? t.assetHistory : 
                 view === 'masterDatabase' ? t.masterDatabase : 
+                view === 'investmentIncome' ? t.investmentIncome :
                 view === 'bulk' ? t.bulkDataImport : 
                 view === 'dataManagement' ? t.dataManagement :
                 t.settings
@@ -328,6 +355,7 @@ const App: React.FC = () => {
                  view === 'dashboard' ? 'Track, analyze, and optimize your wealth.' :
                  view === 'history' ? 'View and manage your historical records.' :
                  view === 'masterDatabase' ? t.masterDbDesc :
+                 view === 'investmentIncome' ? t.incomeDesc :
                  view === 'bulk' ? t.bulkDesc :
                  view === 'dataManagement' ? t.backupDesc :
                  'Configure your asset categories and family members.'
@@ -375,6 +403,12 @@ const App: React.FC = () => {
                 language={language}
               />
             )}
+            {view === 'investmentIncome' && (
+              <InvestmentIncomeView 
+                incomeRecords={incomeRecords}
+                language={language}
+              />
+            )}
             {view === 'settings' && (
               <SettingsView 
                 categories={categories}
@@ -396,6 +430,7 @@ const App: React.FC = () => {
                 categories={categories}
                 familyMembers={familyMembers}
                 onImport={handleBulkImport}
+                onImportIncome={handleImportIncome}
                 language={language}
               />
             )}

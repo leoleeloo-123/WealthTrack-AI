@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
-import { Language } from '../types';
+import { Language, IncomeRecord } from '../types';
 import { translations } from '../utils/translations';
 
 interface BulkEntryViewProps {
   categories: string[];
   familyMembers: string[];
   onImport: (items: BulkImportItem[]) => void;
+  onImportIncome: (items: IncomeRecord[]) => void;
   language: Language;
 }
 
@@ -22,69 +23,101 @@ export interface BulkImportItem {
   currency: string;
 }
 
-export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, familyMembers, onImport, language }) => {
+export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, familyMembers, onImport, onImportIncome, language }) => {
   const [inputText, setInputText] = useState('');
+  const [importType, setImportType] = useState<'snapshot' | 'income'>('snapshot');
   const [stagedItems, setStagedItems] = useState<BulkImportItem[]>([]);
+  const [stagedIncome, setStagedIncome] = useState<IncomeRecord[]>([]);
   const [step, setStep] = useState<'input' | 'review'>('input');
+  
   const t = translations[language];
 
   const handleParse = () => {
     const rows = inputText.trim().split('\n');
-    const parsed: BulkImportItem[] = [];
+    
+    if (importType === 'snapshot') {
+        const parsed: BulkImportItem[] = [];
+        rows.forEach(row => {
+          const delimiter = row.includes('\t') ? '\t' : ',';
+          const cols = row.split(delimiter).map(c => c.trim());
+          
+          if (cols.length >= 3) {
+            let date = cols[0];
+            const dateObj = new Date(date);
+            if (!isNaN(dateObj.getTime())) {
+              date = dateObj.toISOString().split('T')[0];
+            } else {
+              date = new Date().toISOString().split('T')[0];
+            }
 
-    rows.forEach(row => {
-      const delimiter = row.includes('\t') ? '\t' : ',';
-      const cols = row.split(delimiter).map(c => c.trim());
-      
-      if (cols.length >= 3) {
-        let date = cols[0];
-        const dateObj = new Date(date);
-        if (!isNaN(dateObj.getTime())) {
-           date = dateObj.toISOString().split('T')[0];
-        } else {
-           date = new Date().toISOString().split('T')[0];
-        }
+            const category = cols[1] || 'Other';
+            const name = cols[2] || category; // Default name to category if empty
+            const valueStr = cols[3] || '0';
+            const familyMember = cols[4] || familyMembers[0] || 'Me';
+            const currency = cols[5] || 'USD';
 
-        const category = cols[1] || 'Other';
-        const name = cols[2] || 'Asset';
-        const valueStr = cols[3] || '0';
-        const familyMember = cols[4] || familyMembers[0] || 'Me';
-        const currency = cols[5] || 'USD';
+            const value = parseFloat(valueStr.replace(/[^0-9.-]/g, ''));
 
-        const value = parseFloat(valueStr.replace(/[^0-9.-]/g, ''));
+            if (!isNaN(value)) {
+              parsed.push({
+                id: uuidv4(),
+                date,
+                category: categories.find(c => c.toLowerCase() === category.toLowerCase()) || category,
+                name,
+                value,
+                familyMember,
+                currency
+              });
+            }
+          }
+        });
+        setStagedItems(parsed);
+        if (parsed.length > 0) setStep('review');
+    } else {
+        // Parse Income Records: Date | Category | Name | Value
+        const parsed: IncomeRecord[] = [];
+        rows.forEach(row => {
+          const delimiter = row.includes('\t') ? '\t' : ',';
+          const cols = row.split(delimiter).map(c => c.trim());
+          
+          if (cols.length >= 3) {
+             let date = cols[0];
+             const dateObj = new Date(date);
+             if (!isNaN(dateObj.getTime())) date = dateObj.toISOString().split('T')[0];
+             else date = new Date().toISOString().split('T')[0];
+             
+             const category = cols[1] || 'Income';
+             const name = cols[2] || 'Source';
+             const valueStr = cols[3] || '0';
+             const value = parseFloat(valueStr.replace(/[^0-9.-]/g, ''));
 
-        if (!isNaN(value)) {
-          parsed.push({
-            id: uuidv4(),
-            date,
-            category: categories.find(c => c.toLowerCase() === category.toLowerCase()) || category,
-            name,
-            value,
-            familyMember,
-            currency
-          });
-        }
-      }
-    });
-
-    setStagedItems(parsed);
-    if (parsed.length > 0) setStep('review');
-  };
-
-  const handleUpdateItem = (id: string, field: keyof BulkImportItem, val: any) => {
-    setStagedItems(prev => prev.map(item => item.id === id ? { ...item, [field]: val } : item));
-  };
-
-  const handleRemoveItem = (id: string) => {
-    setStagedItems(prev => prev.filter(item => item.id !== id));
+             if (!isNaN(value)) {
+               parsed.push({
+                 id: uuidv4(),
+                 date,
+                 category,
+                 name,
+                 value,
+                 currency: 'USD' // Default to USD for income for now
+               });
+             }
+          }
+        });
+        setStagedIncome(parsed);
+        if (parsed.length > 0) setStep('review');
+    }
   };
 
   const doImport = () => {
-    onImport(stagedItems);
-    setStagedItems([]);
+    if (importType === 'snapshot') {
+        onImport(stagedItems);
+        setStagedItems([]);
+    } else {
+        onImportIncome(stagedIncome);
+        setStagedIncome([]);
+    }
     setInputText('');
     setStep('input');
-    // Scroll to top of the main container
     document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -95,31 +128,60 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
       
       {step === 'input' && (
         <Card title={t.bulkImport} className="animate-fade-in">
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              {t.bulkDesc} <br/>
-              {t.expectedFormat}: <strong>{t.date}</strong> | <strong>{t.category}</strong> | <strong>{t.name}</strong> | <strong>{t.value}</strong> | <strong>{t.familyMember}</strong> | <strong>{t.currency}</strong>
-            </p>
-            <textarea
-              className="w-full h-64 p-4 border border-slate-300 dark:border-slate-600 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200"
-              placeholder={`2023-10-01\tBank\tChase\t5000\tDad\tUSD\n2023-10-01\tStock\tBABA\t1200\tMom\tCNY\n...`}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-            />
-            <div className="flex justify-end">
-              <Button onClick={handleParse} disabled={!inputText.trim()}>
-                {t.parseData}
-              </Button>
+          <div className="space-y-6">
+            
+            {/* Import Type Switcher */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-700">
+               <span className="font-semibold text-slate-700 dark:text-slate-200">{t.importType}:</span>
+               <div className="flex gap-2">
+                 <button 
+                   onClick={() => setImportType('snapshot')}
+                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${importType === 'snapshot' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                 >
+                   {t.assetSnapshots}
+                 </button>
+                 <button 
+                   onClick={() => setImportType('income')}
+                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${importType === 'income' ? 'bg-emerald-600 text-white shadow' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                 >
+                   {t.incomeRecords}
+                 </button>
+               </div>
+            </div>
+
+            <div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                {t.bulkDesc}
+              </p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                 {importType === 'snapshot' ? (
+                   <span>{t.expectedFormat}: <strong>{t.date}</strong> | <strong>{t.category}</strong> | <strong>{t.name}</strong> | <strong>{t.value}</strong> | <strong>{t.familyMember}</strong> | <strong>{t.currency}</strong></span>
+                 ) : (
+                   <span>{t.incomeFormat}</span>
+                 )}
+              </p>
+              <textarea
+                className="w-full h-64 p-4 border border-slate-300 dark:border-slate-600 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200"
+                placeholder={importType === 'snapshot' 
+                  ? `2023-10-01\tBank\tChase\t5000\tDad\tUSD\n...` 
+                  : `2023-12-31\tDividend\tApple Stock\t45.50\n2023-12-31\tInterest\tT-Bill\t120.00`}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+              />
+              <div className="flex justify-end mt-4">
+                <Button onClick={handleParse} disabled={!inputText.trim()}>
+                  {t.parseData}
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
       )}
 
       {step === 'review' && (
-        <Card title={`${t.reviewImport} (${stagedItems.length})`} className="animate-fade-in">
+        <Card title={`${t.reviewImport} (${importType === 'snapshot' ? stagedItems.length : stagedIncome.length})`} className="animate-fade-in">
           <div className="space-y-4">
             
-            {/* Actions Moved to Top */}
             <div className="flex justify-end gap-3 pb-4 border-b border-slate-100 dark:border-slate-700">
               <Button variant="secondary" onClick={() => setStep('input')}>{t.back}</Button>
               <Button onClick={doImport} className="bg-emerald-600 hover:bg-emerald-700">{t.importItems}</Button>
@@ -133,70 +195,36 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
                     <th className="pb-2">{t.category}</th>
                     <th className="pb-2">{t.name}</th>
                     <th className="pb-2">{t.value}</th>
-                    <th className="pb-2">{t.currency}</th>
-                    <th className="pb-2">{t.familyMember}</th>
+                    {importType === 'snapshot' && <th className="pb-2">{t.familyMember}</th>}
+                    {importType === 'snapshot' && <th className="pb-2">{t.currency}</th>}
                     <th className="pb-2"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {stagedItems.map(item => (
+                  {/* RENDER SNAPSHOT ITEMS */}
+                  {importType === 'snapshot' && stagedItems.map(item => (
                     <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="py-2 pr-2">
-                        <input 
-                          type="date" 
-                          value={item.date}
-                          onChange={(e) => handleUpdateItem(item.id, 'date', e.target.value)}
-                          className={`w-32 ${inputStyle}`}
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          value={item.category}
-                          onChange={(e) => handleUpdateItem(item.id, 'category', e.target.value)}
-                          className={`w-28 ${inputStyle}`}
-                        >
-                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                          {!categories.includes(item.category) && <option value={item.category}>{item.category} (New)</option>}
-                        </select>
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input 
-                          type="text" 
-                          value={item.name}
-                          onChange={(e) => handleUpdateItem(item.id, 'name', e.target.value)}
-                          className={`w-full ${inputStyle}`}
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                         <input 
-                          type="number" 
-                          value={item.value}
-                          onChange={(e) => handleUpdateItem(item.id, 'value', parseFloat(e.target.value))}
-                          className={`w-24 ${inputStyle}`}
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                         <input 
-                          type="text" 
-                          value={item.currency}
-                          onChange={(e) => handleUpdateItem(item.id, 'currency', e.target.value)}
-                          className={`w-16 uppercase ${inputStyle}`}
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          value={item.familyMember}
-                          onChange={(e) => handleUpdateItem(item.id, 'familyMember', e.target.value)}
-                          className={`w-24 ${inputStyle}`}
-                        >
-                          {familyMembers.map(m => <option key={m} value={m}>{m}</option>)}
-                          {!familyMembers.includes(item.familyMember) && <option value={item.familyMember}>{item.familyMember} (New)</option>}
-                        </select>
-                      </td>
+                      <td className="py-2 pr-2">{item.date}</td>
+                      <td className="py-2 pr-2">{item.category}</td>
+                      <td className="py-2 pr-2">{item.name}</td>
+                      <td className="py-2 pr-2">{item.value}</td>
+                      <td className="py-2 pr-2">{item.familyMember}</td>
+                      <td className="py-2 pr-2">{item.currency}</td>
                       <td className="py-2 text-right">
-                        <button onClick={() => handleRemoveItem(item.id)} className="text-red-400 hover:text-red-600">
-                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
+                         <button onClick={() => setStagedItems(prev => prev.filter(i => i.id !== item.id))} className="text-red-400 hover:text-red-600">x</button>
+                      </td>
+                    </tr>
+                  ))}
+                  
+                  {/* RENDER INCOME ITEMS */}
+                  {importType === 'income' && stagedIncome.map(item => (
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="py-2 pr-2">{item.date}</td>
+                      <td className="py-2 pr-2">{item.category}</td>
+                      <td className="py-2 pr-2">{item.name}</td>
+                      <td className="py-2 pr-2 font-mono text-emerald-600">{item.value}</td>
+                      <td className="py-2 text-right">
+                         <button onClick={() => setStagedIncome(prev => prev.filter(i => i.id !== item.id))} className="text-red-400 hover:text-red-600">x</button>
                       </td>
                     </tr>
                   ))}

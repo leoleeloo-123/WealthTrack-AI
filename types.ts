@@ -23,3 +23,6 @@ export interface ChartDataPoint {
 }
 
 export type ViewMode = 'dashboard' | 'history' | 'analysis' | 'settings' | 'bulk' | 'dataManagement';
+
+export type Language = 'en' | 'zh';
+export type Theme = 'light' | 'dark';

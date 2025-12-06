@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Snapshot, AssetItem } from '../types';
+import { Snapshot, AssetItem, Language } from '../types';
 import { Button } from './ui/Button';
+import { translations } from '../utils/translations';
 
 interface SnapshotFormProps {
   existingSnapshot?: Snapshot | null;
@@ -9,6 +10,7 @@ interface SnapshotFormProps {
   onCancel: () => void;
   suggestedCategories: string[];
   familyMembers: string[];
+  language: Language;
 }
 
 const COMMON_CURRENCIES = ['USD', 'EUR', 'CNY', 'GBP', 'JPY', 'CAD', 'AUD', 'INR', 'SGD'];
@@ -18,7 +20,8 @@ export const SnapshotForm: React.FC<SnapshotFormProps> = ({
   onSave, 
   onCancel, 
   suggestedCategories,
-  familyMembers
+  familyMembers,
+  language
 }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [familyMember, setFamilyMember] = useState(familyMembers[0] || 'Me');
@@ -26,6 +29,7 @@ export const SnapshotForm: React.FC<SnapshotFormProps> = ({
     { id: uuidv4(), category: 'Bank', name: '', value: 0, currency: 'USD', tags: [] }
   ]);
   const [note, setNote] = useState('');
+  const t = translations[language];
 
   useEffect(() => {
     if (existingSnapshot) {
@@ -62,83 +66,85 @@ export const SnapshotForm: React.FC<SnapshotFormProps> = ({
     });
   };
 
+  const inputStyle = "w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-colors";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-100 dark:border-slate-700 transition-colors">
         <div>
-          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Date</label>
+          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t.date}</label>
           <input 
             type="date" 
             required
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent outline-none"
+            className={inputStyle}
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Family Member</label>
+          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t.familyMember}</label>
           <select
             value={familyMember}
             onChange={(e) => setFamilyMember(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent outline-none"
+            className={inputStyle}
           >
             {familyMembers.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
         <div>
-           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Note (Optional)</label>
+           <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t.note}</label>
            <input 
             type="text" 
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. End of year review"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent outline-none"
+            placeholder={t.notePlaceholder}
+            className={inputStyle}
            />
         </div>
       </div>
 
       <div className="space-y-3">
-        <div className="flex justify-between items-center border-b pb-2">
-          <h4 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Asset Items</h4>
-          <span className="text-sm text-slate-500">
-            Raw Total: {items.reduce((acc, curr) => acc + Number(curr.value || 0), 0).toLocaleString()} (Mixed)
+        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-2">
+          <h4 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{t.assetItems}</h4>
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            {t.rawTotal}: {items.reduce((acc, curr) => acc + Number(curr.value || 0), 0).toLocaleString()} (Mixed)
           </span>
         </div>
         
         {items.map((item, index) => (
-          <div key={item.id} className="flex flex-col md:flex-row gap-3 items-start md:items-center bg-white p-3 rounded-md border border-slate-200 shadow-sm">
+          <div key={item.id} className="flex flex-col md:flex-row gap-3 items-start md:items-center bg-white dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
             <div className="flex-1 w-full md:w-auto">
               <input
                 type="text"
                 list="category-suggestions"
-                placeholder="Category"
+                placeholder={t.category}
                 value={item.category}
                 onChange={(e) => handleItemChange(item.id, 'category', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-accent outline-none"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded focus:ring-1 focus:ring-accent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
             <div className="flex-[2] w-full md:w-auto">
               <input
                 type="text"
-                placeholder="Name (e.g. Chase Checking)"
+                placeholder={t.namePlaceholder}
                 value={item.name}
                 onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-accent outline-none"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded focus:ring-1 focus:ring-accent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
             <div className="flex-1 w-full md:w-auto flex gap-2">
                <input
                 type="number"
                 step="0.01"
-                placeholder="Value"
+                placeholder={t.value}
                 value={item.value}
                 onChange={(e) => handleItemChange(item.id, 'value', parseFloat(e.target.value))}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-accent outline-none font-mono"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded focus:ring-1 focus:ring-accent outline-none font-mono bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
               <select
                 value={item.currency || 'USD'}
                 onChange={(e) => handleItemChange(item.id, 'currency', e.target.value)}
-                className="w-20 px-2 py-2 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-accent outline-none bg-slate-50"
+                className="w-20 px-2 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded focus:ring-1 focus:ring-accent outline-none bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white"
               >
                 {COMMON_CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -157,7 +163,7 @@ export const SnapshotForm: React.FC<SnapshotFormProps> = ({
 
       <div className="flex gap-3">
         <Button type="button" variant="secondary" onClick={handleAddItem} className="w-full md:w-auto text-sm">
-          + Add Asset Line
+          + {t.addAssetLine}
         </Button>
       </div>
 
@@ -167,9 +173,9 @@ export const SnapshotForm: React.FC<SnapshotFormProps> = ({
         ))}
       </datalist>
 
-      <div className="pt-6 border-t border-slate-200 flex justify-end gap-3">
-        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button type="submit">Save Snapshot</Button>
+      <div className="pt-6 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+        <Button type="button" variant="secondary" onClick={onCancel}>{t.cancel}</Button>
+        <Button type="submit">{t.saveSnapshot}</Button>
       </div>
     </form>
   );

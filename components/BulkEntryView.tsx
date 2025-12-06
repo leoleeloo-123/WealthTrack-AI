@@ -2,11 +2,14 @@ import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { Language } from '../types';
+import { translations } from '../utils/translations';
 
 interface BulkEntryViewProps {
   categories: string[];
   familyMembers: string[];
   onImport: (items: BulkImportItem[]) => void;
+  language: Language;
 }
 
 export interface BulkImportItem {
@@ -19,25 +22,22 @@ export interface BulkImportItem {
   currency: string;
 }
 
-export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, familyMembers, onImport }) => {
+export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, familyMembers, onImport, language }) => {
   const [inputText, setInputText] = useState('');
   const [stagedItems, setStagedItems] = useState<BulkImportItem[]>([]);
   const [step, setStep] = useState<'input' | 'review'>('input');
+  const t = translations[language];
 
   const handleParse = () => {
     const rows = inputText.trim().split('\n');
     const parsed: BulkImportItem[] = [];
 
     rows.forEach(row => {
-      // Basic heuristic for Excel/Sheets copy-paste (Tab separated)
       const delimiter = row.includes('\t') ? '\t' : ',';
       const cols = row.split(delimiter).map(c => c.trim());
       
-      // Expected Format: Date | Category | Name | Value | Family Member | Currency
-      
       if (cols.length >= 3) {
         let date = cols[0];
-        // Attempt to standardize date to YYYY-MM-DD
         const dateObj = new Date(date);
         if (!isNaN(dateObj.getTime())) {
            date = dateObj.toISOString().split('T')[0];
@@ -51,7 +51,6 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
         const familyMember = cols[4] || familyMembers[0] || 'Me';
         const currency = cols[5] || 'USD';
 
-        // Clean value
         const value = parseFloat(valueStr.replace(/[^0-9.-]/g, ''));
 
         if (!isNaN(value)) {
@@ -87,25 +86,27 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
     setStep('input');
   };
 
+  const inputStyle = "px-2 py-1 border border-slate-200 dark:border-slate-600 rounded text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700";
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       
       {step === 'input' && (
-        <Card title="Bulk Data Import" className="animate-fade-in">
+        <Card title={t.bulkImport} className="animate-fade-in">
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
-              Copy and paste data from Excel or Google Sheets. <br/>
-              Expected format: <strong>Date</strong> | <strong>Category</strong> | <strong>Name</strong> | <strong>Value</strong> | <strong>Family Member</strong> | <strong>Currency</strong>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {t.bulkDesc} <br/>
+              {t.expectedFormat}: <strong>{t.date}</strong> | <strong>{t.category}</strong> | <strong>{t.name}</strong> | <strong>{t.value}</strong> | <strong>{t.familyMember}</strong> | <strong>{t.currency}</strong>
             </p>
             <textarea
-              className="w-full h-64 p-4 border border-slate-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full h-64 p-4 border border-slate-300 dark:border-slate-600 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200"
               placeholder={`2023-10-01\tBank\tChase\t5000\tDad\tUSD\n2023-10-01\tStock\tBABA\t1200\tMom\tCNY\n...`}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
             />
             <div className="flex justify-end">
               <Button onClick={handleParse} disabled={!inputText.trim()}>
-                Parse Data
+                {t.parseData}
               </Button>
             </div>
           </div>
@@ -113,37 +114,37 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
       )}
 
       {step === 'review' && (
-        <Card title={`Review Import (${stagedItems.length} items)`} className="animate-fade-in">
+        <Card title={`${t.reviewImport} (${stagedItems.length})`} className="animate-fade-in">
           <div className="space-y-4">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-left text-sm text-slate-700 dark:text-slate-300">
                 <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider">
-                    <th className="pb-2 pl-2">Date</th>
-                    <th className="pb-2">Category</th>
-                    <th className="pb-2">Name</th>
-                    <th className="pb-2">Value</th>
-                    <th className="pb-2">Currency</th>
-                    <th className="pb-2">Member</th>
+                  <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="pb-2 pl-2">{t.date}</th>
+                    <th className="pb-2">{t.category}</th>
+                    <th className="pb-2">{t.name}</th>
+                    <th className="pb-2">{t.value}</th>
+                    <th className="pb-2">{t.currency}</th>
+                    <th className="pb-2">{t.familyMember}</th>
                     <th className="pb-2"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {stagedItems.map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50">
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                       <td className="py-2 pr-2">
                         <input 
                           type="date" 
                           value={item.date}
                           onChange={(e) => handleUpdateItem(item.id, 'date', e.target.value)}
-                          className="w-32 px-2 py-1 border border-slate-200 rounded text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none"
+                          className={`w-32 ${inputStyle}`}
                         />
                       </td>
                       <td className="py-2 pr-2">
                         <select
                           value={item.category}
                           onChange={(e) => handleUpdateItem(item.id, 'category', e.target.value)}
-                          className="w-28 px-2 py-1 border border-slate-200 rounded text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none"
+                          className={`w-28 ${inputStyle}`}
                         >
                           {categories.map(c => <option key={c} value={c}>{c}</option>)}
                           {!categories.includes(item.category) && <option value={item.category}>{item.category} (New)</option>}
@@ -154,7 +155,7 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
                           type="text" 
                           value={item.name}
                           onChange={(e) => handleUpdateItem(item.id, 'name', e.target.value)}
-                          className="w-full px-2 py-1 border border-slate-200 rounded text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none"
+                          className={`w-full ${inputStyle}`}
                         />
                       </td>
                       <td className="py-2 pr-2">
@@ -162,7 +163,7 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
                           type="number" 
                           value={item.value}
                           onChange={(e) => handleUpdateItem(item.id, 'value', parseFloat(e.target.value))}
-                          className="w-24 px-2 py-1 border border-slate-200 rounded text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none"
+                          className={`w-24 ${inputStyle}`}
                         />
                       </td>
                       <td className="py-2 pr-2">
@@ -170,14 +171,14 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
                           type="text" 
                           value={item.currency}
                           onChange={(e) => handleUpdateItem(item.id, 'currency', e.target.value)}
-                          className="w-16 px-2 py-1 border border-slate-200 rounded text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none uppercase"
+                          className={`w-16 uppercase ${inputStyle}`}
                         />
                       </td>
                       <td className="py-2 pr-2">
                         <select
                           value={item.familyMember}
                           onChange={(e) => handleUpdateItem(item.id, 'familyMember', e.target.value)}
-                          className="w-24 px-2 py-1 border border-slate-200 rounded text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none"
+                          className={`w-24 ${inputStyle}`}
                         >
                           {familyMembers.map(m => <option key={m} value={m}>{m}</option>)}
                           {!familyMembers.includes(item.familyMember) && <option value={item.familyMember}>{item.familyMember} (New)</option>}
@@ -194,9 +195,9 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
               </table>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-              <Button variant="secondary" onClick={() => setStep('input')}>Back</Button>
-              <Button onClick={doImport} className="bg-emerald-600 hover:bg-emerald-700">Import Items</Button>
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+              <Button variant="secondary" onClick={() => setStep('input')}>{t.back}</Button>
+              <Button onClick={doImport} className="bg-emerald-600 hover:bg-emerald-700">{t.importItems}</Button>
             </div>
           </div>
         </Card>

@@ -1,21 +1,21 @@
 import React from 'react';
 import { Button } from './ui/Button';
-import { Snapshot } from '../types';
+import { Snapshot, Language } from '../types';
+import { translations } from '../utils/translations';
 
 interface DataManagementViewProps {
   snapshots: Snapshot[];
   onClearAllData: () => void;
+  language: Language;
 }
 
-export const DataManagementView: React.FC<DataManagementViewProps> = ({ snapshots, onClearAllData }) => {
+export const DataManagementView: React.FC<DataManagementViewProps> = ({ snapshots, onClearAllData, language }) => {
+  const t = translations[language];
+
   const handleExportCSV = () => {
-    // Expected Header: Date | Category | Name | Value | Family Member | Currency
     const header = ['Date', 'Category', 'Name', 'Value', 'Family Member', 'Currency'];
-    
-    // Flatten snapshots into rows
     const rows = snapshots.flatMap(s => 
       s.items.map(i => {
-        // Basic sanitization: replace commas in name/category to avoid breaking CSV columns
         const cleanName = (i.name || '').replace(/,/g, ' ');
         const cleanCategory = (i.category || '').replace(/,/g, ' ');
         const cleanMember = (s.familyMember || 'Me').replace(/,/g, ' ');
@@ -32,7 +32,6 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ snapshot
     );
 
     const csvContent = [header.join(','), ...rows].join('\n');
-    
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -44,7 +43,7 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ snapshot
   };
 
   const handleDeleteAll = () => {
-    if (window.confirm("⚠️ DANGER: Are you sure you want to delete ALL data?\n\nThis includes all snapshots, custom categories, and family members. This action cannot be undone unless you have a backup CSV.")) {
+    if (window.confirm(t.deleteConfirm)) {
         onClearAllData();
     }
   };
@@ -53,47 +52,46 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ snapshot
     <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
       
       {/* Export Section */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
         <div className="flex items-center gap-3 mb-4">
-           <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+           <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
            </div>
            <div>
-              <h3 className="text-lg font-bold text-slate-800">Data Backup</h3>
-              <p className="text-xs text-slate-500">Export your data to safeguard against updates or to move to another device.</p>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t.dataBackup}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.backupDesc}</p>
            </div>
         </div>
         
-        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-slate-600">
-             Download a <strong>.csv</strong> file compatible with Excel. 
-             <br/>You can restore this data later using the <strong>Bulk Import</strong> feature.
+        <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+             {t.downloadCSV}
           </p>
           <Button onClick={handleExportCSV} variant="primary" className="whitespace-nowrap bg-emerald-600 hover:bg-emerald-700">
-            Download CSV
+            {t.downloadCSV}
           </Button>
         </div>
       </div>
 
       {/* Danger Zone */}
-      <div className="bg-white p-6 rounded-xl border border-red-200 shadow-sm relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-red-200 dark:border-red-900 shadow-sm relative overflow-hidden transition-colors">
         <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
         <div className="flex items-center gap-3 mb-4">
-           <div className="p-2 bg-red-100 text-red-600 rounded-lg">
+           <div className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg">
              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
            </div>
            <div>
-              <h3 className="text-lg font-bold text-red-700">Danger Zone</h3>
-              <p className="text-xs text-red-500">Irreversible actions regarding your data.</p>
+              <h3 className="text-lg font-bold text-red-700 dark:text-red-400">{t.dangerZone}</h3>
+              <p className="text-xs text-red-500 dark:text-red-400/70">{t.irriversible}</p>
            </div>
         </div>
 
-        <div className="bg-red-50 p-4 rounded-lg border border-red-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-red-800">
-             <strong>Delete All Data:</strong> This will wipe all snapshots, reset categories to default, and remove all family members from this browser.
+        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-100 dark:border-red-900/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-red-800 dark:text-red-300">
+             {t.deleteWarning}
           </p>
           <Button onClick={handleDeleteAll} variant="danger" className="whitespace-nowrap">
-            Delete All Data
+            {t.deleteAll}
           </Button>
         </div>
       </div>

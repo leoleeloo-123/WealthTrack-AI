@@ -28,52 +28,21 @@ const RATES: Record<string, number> = {
   'INR': 0.012
 };
 
-// Custom shape for the hover effect
-const renderActiveShape = (props: any) => {
+// Custom static label for Pie Chart
+const renderCustomLabel = (props: any) => {
   const RADIAN = Math.PI / 180;
-  const { cx, cy, midAngle, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
-  const sin = Math.sin(-RADIAN * midAngle);
-  const cos = Math.cos(-RADIAN * midAngle);
-  const sx = cx + (outerRadius + 10) * cos;
-  const sy = cy + (outerRadius + 10) * sin;
-  const mx = cx + (outerRadius + 30) * cos;
-  const my = cy + (outerRadius + 30) * sin;
-  const ex = mx + (cos >= 0 ? 1 : -1) * 22;
-  const ey = my;
-  const textAnchor = cos >= 0 ? 'start' : 'end';
+  const { cx, cy, midAngle, innerRadius, outerRadius, percent, value, name } = props;
+  const radius = outerRadius * 1.2;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  
+  // Calculate text anchor based on position
+  const textAnchor = x > cx ? 'start' : 'end';
 
   return (
-    <g>
-      <text x={cx} y={cy} dy={8} textAnchor="middle" fill={fill} className="font-bold text-sm md:text-base">
-        {payload.name.substring(0, 10)}{payload.name.length > 10 ? '...' : ''}
-      </text>
-      <Sector
-        cx={cx}
-        cy={cy}
-        innerRadius={innerRadius}
-        outerRadius={outerRadius + 6}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
-      />
-      <Sector
-        cx={cx}
-        cy={cy}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        innerRadius={outerRadius + 8}
-        outerRadius={outerRadius + 12}
-        fill={fill}
-      />
-      <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" />
-      <circle cx={ex} cy={ey} r={2} fill={fill} stroke="none" />
-      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} textAnchor={textAnchor} fill="#333" className="text-xs font-semibold dark:fill-slate-200">
-        {value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-      </text>
-      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={18} textAnchor={textAnchor} fill="#999" className="text-[10px]">
-        {`( ${(percent * 100).toFixed(1)}%)`}
-      </text>
-    </g>
+    <text x={x} y={y} fill="#64748b" textAnchor={textAnchor} dominantBaseline="central" className="text-xs font-medium dark:fill-slate-300">
+      {`${name}: ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${(percent * 100).toFixed(1)}%)`}
+    </text>
   );
 };
 
@@ -85,7 +54,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   
-  // State for Pie Chart Hover
+  // State for Pie Chart Hover (kept for interaction, though labels are static now)
   const [activeIndex, setActiveIndex] = useState(0);
 
   const t = translations[language];
@@ -194,7 +163,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
     return Array.from(allKeys);
   }, [chartData]);
 
-  // Handle Pie Enter
   const onPieEnter = (_: any, index: number) => {
     setActiveIndex(index);
   };
@@ -350,25 +318,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Pie Chart: Detailed Item Breakdown */}
-        <Card 
-          title={`${t.assetBreakdown} ${pieDataInfo.date ? `(${pieDataInfo.date})` : ''}`}
-        >
-           {/* Increased height for bigger visual */}
-           <div className="h-[400px] w-full flex items-center justify-center -ml-2">
+        <Card title={t.assetBreakdown}>
+           {/* Chart Container */}
+           <div className="h-[450px] w-full flex items-center justify-center relative">
+             
+             {/* Date Indicator in top-left of chart area */}
+             {pieDataInfo.date && (
+                <div className="absolute top-2 left-2 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded text-sm font-semibold text-slate-700 dark:text-slate-200 z-10 shadow-sm border border-slate-200 dark:border-slate-600">
+                  {pieDataInfo.date}
+                </div>
+             )}
+
              {pieDataInfo.data.length > 0 ? (
                <ResponsiveContainer width="100%" height="100%">
-                 <PieChart>
+                 <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                     <Pie
                       activeIndex={activeIndex}
-                      activeShape={renderActiveShape}
                       data={pieDataInfo.data}
                       cx="50%"
                       cy="50%"
-                      innerRadius={80} // Increased size
-                      outerRadius={110} // Increased size
+                      innerRadius={70}
+                      outerRadius={100}
                       dataKey="value"
                       onMouseEnter={onPieEnter}
                       paddingAngle={2}
+                      label={renderCustomLabel}
+                      labelLine={true}
                     >
                       {pieDataInfo.data.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={colors[index % colors.length]} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
@@ -384,7 +359,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
 
         {/* Stacked Bar Chart */}
         <Card title={t.assetAllocation}>
-            <div className="h-[400px] w-full">
+            <div className="h-[450px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.5} />
@@ -415,11 +390,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, availableCatego
                               .filter(i => filterCategory === 'All' || i.category === filterCategory)
                               .sort((a,b) => b.value - a.value);
 
+                           // Calculate Subtotal (Normalized to USD for consistent summation)
+                           const subTotalNormalized = latestItems.reduce((acc, item) => {
+                             const rate = RATES[item.currency?.toUpperCase()] || 1;
+                             return acc + (item.value * rate);
+                           }, 0);
+
                            return (
                              <>
-                               <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">
-                                  Snapshot Date: <span className="text-slate-800 dark:text-slate-200 font-bold">{lastDate}</span>
+                               <div className="flex justify-between items-end mb-4 pb-2 border-b border-slate-100 dark:border-slate-700">
+                                  <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                     Snapshot Date: <span className="text-slate-800 dark:text-slate-200 font-bold">{lastDate}</span>
+                                  </div>
+                                  <div className="text-right">
+                                     <span className="text-xs text-slate-400 uppercase tracking-wide">Sub Total (Approx USD)</span>
+                                     <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                                       ${subTotalNormalized.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                     </div>
+                                  </div>
                                </div>
+
                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                  {latestItems.map((item, idx) => (
                                    <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-700/50 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-100 dark:border-slate-700">

@@ -1,17 +1,30 @@
 import React, { useMemo, useState } from 'react';
-import { Snapshot, Language } from '../types';
+import { Snapshot, Language, AssetItem } from '../types';
 import { Card } from './ui/Card';
 import { translations } from '../utils/translations';
 
 interface HistoryViewProps {
   snapshots: Snapshot[];
+  availableCategories: string[];
+  familyMembers: string[];
   onEdit: (s: Snapshot) => void;
   onDelete: (id: string) => void;
   language: Language;
 }
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ snapshots, onEdit, onDelete, language }) => {
-  const [filter, setFilter] = useState('');
+export const HistoryView: React.FC<HistoryViewProps> = ({ 
+  snapshots, 
+  availableCategories,
+  familyMembers,
+  onEdit, 
+  onDelete, 
+  language 
+}) => {
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [filterMember, setFilterMember] = useState('All');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+
   const t = translations[language];
   
   // Sort chronological
@@ -19,23 +32,99 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ snapshots, onEdit, onD
     return [...snapshots].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [snapshots]);
 
-  const filteredSnapshots = sortedSnapshots.filter(s => 
-    s.items.some(i => 
-      i.name.toLowerCase().includes(filter.toLowerCase()) || 
-      i.category.toLowerCase().includes(filter.toLowerCase())
-    ) || s.date.includes(filter) || s.familyMember?.toLowerCase().includes(filter.toLowerCase())
-  );
+  const filteredSnapshots = sortedSnapshots.filter(s => {
+    // 1. Family Member Filter
+    if (filterMember !== 'All' && s.familyMember !== filterMember) return false;
+
+    // 2. Category Filter (Show snapshot if ANY item matches the category)
+    if (filterCategory !== 'All' && !s.items.some(i => i.category === filterCategory)) return false;
+
+    // 3. Date Range Filter
+    if (filterStartDate && s.date < `${filterStartDate}-01`) return false;
+    if (filterEndDate && s.date > `${filterEndDate}-31`) return false;
+
+    return true;
+  });
+
+  const isItemHighlighted = (item: AssetItem) => {
+    // If category filter is All, no specific highlighting
+    if (filterCategory === 'All') return false;
+
+    // Highlight items that match the selected category
+    if (item.category === filterCategory) return true;
+
+    return false;
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-        <input 
-          type="text" 
-          placeholder={t.filterPlaceholder}
-          className="w-full sm:w-96 px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-accent outline-none transition-colors"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
+      {/* Filter Bar */}
+      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+         <div className="flex flex-wrap items-center gap-4">
+             
+             {/* Family Member */}
+             <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.familyMember}:</span>
+                <select 
+                    value={filterMember} 
+                    onChange={(e) => setFilterMember(e.target.value)}
+                    className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+                >
+                    <option value="All">{t.allFamily}</option>
+                    {familyMembers.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+            </div>
+
+            {/* Category */}
+            <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.category}:</span>
+                <select 
+                    value={filterCategory} 
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+                >
+                    <option value="All">All</option>
+                    {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+            </div>
+
+            {/* Date Range: From */}
+            <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.from}:</span>
+                <input 
+                  type="month" 
+                  value={filterStartDate}
+                  onChange={(e) => setFilterStartDate(e.target.value)}
+                  className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+                />
+            </div>
+
+            {/* Date Range: To */}
+            <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.to}:</span>
+                <input 
+                  type="month" 
+                  value={filterEndDate}
+                  onChange={(e) => setFilterEndDate(e.target.value)}
+                  className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+                />
+            </div>
+
+             {(filterStartDate || filterEndDate || filterCategory !== 'All' || filterMember !== 'All') && (
+               <button 
+                 onClick={() => { 
+                   setFilterStartDate(''); 
+                   setFilterEndDate(''); 
+                   setFilterCategory('All');
+                   setFilterMember('All');
+                 }}
+                 className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 ml-auto md:ml-0"
+                 title="Clear All Filters"
+               >
+                 ✕
+               </button>
+             )}
+         </div>
       </div>
 
       <div className="space-y-4">
@@ -87,7 +176,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ snapshots, onEdit, onD
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {snapshot.items.map(item => (
                 <div key={item.id} className={`p-3 rounded border text-sm flex justify-between items-center transition-colors ${
-                  (filter && (item.name.toLowerCase().includes(filter.toLowerCase()) || item.category.toLowerCase().includes(filter.toLowerCase())))
+                  isItemHighlighted(item)
                     ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 ring-2 ring-blue-100 dark:ring-blue-900/40' 
                     : 'bg-slate-50 dark:bg-slate-700/50 border-slate-100 dark:border-slate-700'
                 }`}>

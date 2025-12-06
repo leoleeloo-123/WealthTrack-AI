@@ -284,6 +284,8 @@ const App: React.FC = () => {
             {view === 'history' && (
               <HistoryView 
                 snapshots={snapshots} 
+                availableCategories={categories}
+                familyMembers={familyMembers}
                 onEdit={startEdit} 
                 onDelete={handleDeleteSnapshot} 
                 language={language}

@@ -1,45 +1,76 @@
+
 import React from 'react';
 import { Button } from './ui/Button';
-import { Snapshot, Language } from '../types';
+import { Snapshot, Language, IncomeRecord } from '../types';
 import { translations } from '../utils/translations';
 
 interface DataManagementViewProps {
   snapshots: Snapshot[];
+  incomeRecords?: IncomeRecord[];
   onClearAllData: () => void;
   language: Language;
 }
 
-export const DataManagementView: React.FC<DataManagementViewProps> = ({ snapshots, onClearAllData, language }) => {
+export const DataManagementView: React.FC<DataManagementViewProps> = ({ snapshots, incomeRecords = [], onClearAllData, language }) => {
   const t = translations[language];
 
-  const handleExportCSV = () => {
-    const header = ['Date', 'Category', 'Name', 'Value', 'Family Member', 'Currency'];
-    const rows = snapshots.flatMap(s => 
-      s.items.map(i => {
-        const cleanName = (i.name || '').replace(/,/g, ' ');
-        const cleanCategory = (i.category || '').replace(/,/g, ' ');
-        const cleanMember = (s.familyMember || 'Me').replace(/,/g, ' ');
-        
-        return [
-          s.date,
-          cleanCategory,
-          cleanName,
-          i.value,
-          cleanMember,
-          i.currency || 'USD'
-        ].join(',');
-      })
-    );
-
-    const csvContent = [header.join(','), ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `wealthtrack_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleExportData = () => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // 1. Export Asset Snapshots
+    if (snapshots.length > 0) {
+        const assetHeader = ['Date', 'Category', 'Name', 'Value', 'Family Member', 'Currency'];
+        const assetRows = snapshots.flatMap(s => 
+          s.items.map(i => {
+            const cleanName = (i.name || '').replace(/,/g, ' ');
+            const cleanCategory = (i.category || '').replace(/,/g, ' ');
+            const cleanMember = (s.familyMember || 'Me').replace(/,/g, ' ');
+            
+            return [
+              s.date,
+              cleanCategory,
+              cleanName,
+              i.value,
+              cleanMember,
+              i.currency || 'USD'
+            ].join(',');
+          })
+        );
+        const assetCsv = [assetHeader.join(','), ...assetRows].join('\n');
+        downloadCSV(assetCsv, `Asset_Snapshot_${today}.csv`);
+    }
+
+    // 2. Export Investment Income
+    if (incomeRecords.length > 0) {
+        // Need a small delay to ensure both downloads trigger in some browsers
+        setTimeout(() => {
+            const incomeHeader = ['Date', 'Category', 'Name', 'Value', 'Currency'];
+            const incomeRows = incomeRecords.map(r => {
+                const cleanName = (r.name || '').replace(/,/g, ' ');
+                const cleanCategory = (r.category || '').replace(/,/g, ' ');
+                return [
+                    r.date,
+                    cleanCategory,
+                    cleanName,
+                    r.value,
+                    r.currency || 'USD'
+                ].join(',');
+            });
+            const incomeCsv = [incomeHeader.join(','), ...incomeRows].join('\n');
+            downloadCSV(incomeCsv, `Investment_Income_${today}.csv`);
+        }, 500);
+    }
   };
 
   const handleDeleteAll = () => {
@@ -67,7 +98,7 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ snapshot
           <p className="text-sm text-slate-600 dark:text-slate-300">
              {t.downloadCSV}
           </p>
-          <Button onClick={handleExportCSV} variant="primary" className="whitespace-nowrap bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={handleExportData} variant="primary" className="whitespace-nowrap bg-emerald-600 hover:bg-emerald-700">
             {t.downloadCSV}
           </Button>
         </div>

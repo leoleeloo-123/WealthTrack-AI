@@ -12,6 +12,7 @@ import { InvestmentIncomeView } from './components/InvestmentIncomeView';
 import { Snapshot, ViewMode, AssetItem, Language, Theme, IncomeRecord } from './types';
 import { Button } from './components/ui/Button';
 import { translations } from './utils/translations';
+import { generateDemoData } from './utils/demoData';
 
 const DEFAULT_CATEGORIES = ['Bank', 'Stock', 'Real Estate', 'Crypto', 'Bond', 'Loan', 'Vehicle', 'Cash', 'Other'];
 const DEFAULT_MEMBERS = ['Me'];
@@ -77,6 +78,7 @@ const App: React.FC = () => {
   // Settings State
   const [language, setLanguage] = useState<Language>('en');
   const [theme, setTheme] = useState<Theme>('light');
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const [editingSnapshot, setEditingSnapshot] = useState<Snapshot | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -87,13 +89,6 @@ const App: React.FC = () => {
 
   // Load from local storage
   useEffect(() => {
-    // Data
-    const savedData = localStorage.getItem('wealthtrack_data');
-    if (savedData) setSnapshots(JSON.parse(savedData) || []);
-    
-    const savedIncome = localStorage.getItem('wealthtrack_income');
-    if (savedIncome) setIncomeRecords(JSON.parse(savedIncome) || []);
-
     // Configs
     const savedCats = localStorage.getItem('wealthtrack_categories');
     setCategories(savedCats ? JSON.parse(savedCats) : DEFAULT_CATEGORIES);
@@ -107,6 +102,21 @@ const App: React.FC = () => {
 
     const savedTheme = localStorage.getItem('wealthtrack_theme');
     if (savedTheme) setTheme(savedTheme as Theme);
+
+    // Data - check if exists, else generate DEMO
+    const savedData = localStorage.getItem('wealthtrack_data');
+    const savedIncome = localStorage.getItem('wealthtrack_income');
+
+    if (savedData || savedIncome) {
+        if (savedData) setSnapshots(JSON.parse(savedData) || []);
+        if (savedIncome) setIncomeRecords(JSON.parse(savedIncome) || []);
+    } else {
+        // New User -> Generate Demo
+        const demo = generateDemoData();
+        setSnapshots(demo.snapshots);
+        setIncomeRecords(demo.incomeRecords);
+        setIsDemoMode(true);
+    }
 
     setIsLoaded(true);
   }, []);
@@ -201,6 +211,7 @@ const App: React.FC = () => {
     setIncomeRecords([]);
     setCategories(DEFAULT_CATEGORIES);
     setFamilyMembers(DEFAULT_MEMBERS);
+    setIsDemoMode(false);
     localStorage.removeItem('wealthtrack_data');
     localStorage.removeItem('wealthtrack_income');
     localStorage.removeItem('wealthtrack_categories');
@@ -331,7 +342,23 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 relative">
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="bg-indigo-600 text-white px-4 py-3 rounded-lg shadow-md mb-6 flex justify-between items-center animate-fade-in">
+            <div className="flex items-center gap-3">
+              <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold tracking-wider">{t.demoMode}</span>
+              <span className="text-sm">{t.demoModeDesc}</span>
+            </div>
+            <button 
+              onClick={() => handleNavClick('dataManagement')}
+              className="text-xs bg-white text-indigo-700 px-3 py-1.5 rounded-full font-medium hover:bg-indigo-50 transition-colors"
+            >
+              {t.clearDemo}
+            </button>
+          </div>
+        )}
+
         <header className="mb-8 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
@@ -433,6 +460,7 @@ const App: React.FC = () => {
             {view === 'dataManagement' && (
               <DataManagementView 
                 snapshots={snapshots}
+                incomeRecords={incomeRecords}
                 onClearAllData={handleClearAllData}
                 language={language}
               />

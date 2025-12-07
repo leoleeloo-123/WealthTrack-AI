@@ -24,6 +24,11 @@ export const translations: Translations = {
     appTitle: "WealthTrack",
     aiPowered: "AI POWERED",
     
+    // Demo Mode
+    demoMode: "DEMO MODE",
+    demoModeDesc: "You are viewing sample data. Feel free to explore features.",
+    clearDemo: "Clear Demo Data",
+
     // Dashboard
     familyMember: "Family Member",
     category: "Category",
@@ -68,28 +73,6 @@ export const translations: Translations = {
     recentIncome: "Recent Income Records",
     source: "Source",
 
-    // Stock Market
-    stockMarketDesc: "Track your stock portfolio performance and get AI-driven market insights.",
-    portfolioSummary: "Portfolio Summary",
-    totalMarketValue: "Total Market Value",
-    totalGainLoss: "Total Gain/Loss",
-    holdings: "Holdings",
-    addStock: "Add Stock",
-    ticker: "Ticker",
-    quantity: "Qty",
-    avgCost: "Avg Cost",
-    currentPrice: "Current Price",
-    marketValue: "Market Value",
-    gainLoss: "Gain/Loss",
-    return: "Return",
-    aiMarketAnalysis: "AI Market Analysis",
-    analyzePortfolio: "Analyze Portfolio",
-    refreshPrices: "Analysis will fetch latest news, but please manually update 'Current Price' for accurate math.",
-    updatePrices: "Update Prices",
-    updating: "Updating...",
-    priceUpdateSuccess: "Prices updated via Google Search.",
-    priceUpdateFail: "Failed to update prices.",
-
     // Form
     date: "Date",
     note: "Note (Optional)",
@@ -122,7 +105,7 @@ export const translations: Translations = {
     // Data Management
     dataBackup: "Data Backup",
     backupDesc: "Export your data to safeguard against updates or to move to another device.",
-    downloadCSV: "Download CSV",
+    downloadCSV: "Download CSV (Assets & Income)",
     dangerZone: "Danger Zone",
     irriversible: "Irreversible actions regarding your data.",
     deleteAll: "Delete All Data",
@@ -159,6 +142,11 @@ export const translations: Translations = {
     bulkDataImport: "批量数据导入",
     appTitle: "财富追踪",
     aiPowered: "AI 驱动",
+
+    // Demo Mode
+    demoMode: "演示模式",
+    demoModeDesc: "您正在查看示例数据。请随意探索功能。",
+    clearDemo: "清除演示数据",
 
     // Dashboard
     familyMember: "家庭成员",
@@ -204,28 +192,6 @@ export const translations: Translations = {
     recentIncome: "近期收入记录",
     source: "来源",
 
-    // Stock Market
-    stockMarketDesc: "追踪您的股票投资组合表现，并获取 AI 驱动的市场洞察。",
-    portfolioSummary: "投资组合摘要",
-    totalMarketValue: "总市值",
-    totalGainLoss: "总盈亏",
-    holdings: "持仓明细",
-    addStock: "添加股票",
-    ticker: "代码",
-    quantity: "数量",
-    avgCost: "平均成本",
-    currentPrice: "当前价格",
-    marketValue: "市值",
-    gainLoss: "盈亏",
-    return: "回报率",
-    aiMarketAnalysis: "AI 市场分析",
-    analyzePortfolio: "分析投资组合",
-    refreshPrices: "AI 分析将获取最新新闻，但请手动更新“当前价格”以确保计算准确。",
-    updatePrices: "更新实时价格",
-    updating: "更新中...",
-    priceUpdateSuccess: "已通过 Google 搜索更新价格。",
-    priceUpdateFail: "价格更新失败。",
-
     // Form
     date: "日期",
     note: "备注 (可选)",
@@ -258,7 +224,7 @@ export const translations: Translations = {
     // Data Management
     dataBackup: "数据备份",
     backupDesc: "导出数据以防丢失，或迁移至其他设备。",
-    downloadCSV: "下载 CSV",
+    downloadCSV: "下载 CSV (资产与收入)",
     dangerZone: "危险区域",
     irriversible: "此操作不可逆，请谨慎。",
     deleteAll: "删除所有数据",

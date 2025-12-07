@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Dashboard } from './components/Dashboard';
 import { HistoryView } from './components/HistoryView';
 import { SnapshotForm } from './components/SnapshotForm';
+import { IncomeForm } from './components/IncomeForm';
 import { SettingsView } from './components/SettingsView';
 import { BulkEntryView, BulkImportItem } from './components/BulkEntryView';
 import { DataManagementView } from './components/DataManagementView';
@@ -80,8 +81,11 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>('light');
   const [isDemoMode, setIsDemoMode] = useState(false);
 
+  // Form Management
   const [editingSnapshot, setEditingSnapshot] = useState<Snapshot | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formTab, setFormTab] = useState<'asset' | 'income'>('asset');
+  
   const [isLoaded, setIsLoaded] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -204,7 +208,18 @@ const App: React.FC = () => {
     setEditingSnapshot(null);
   };
 
+  const handleSaveIncome = (records: IncomeRecord[]) => {
+    setIncomeRecords(prev => [...prev, ...records]);
+    setIsFormOpen(false);
+    // Optionally switch view to verify
+    if (view !== 'investmentIncome') setView('investmentIncome');
+  };
+
   const handleDeleteSnapshot = (id: string) => { setSnapshots(prev => prev.filter(s => s.id !== id)); };
+
+  const handleDeleteIncomeGroup = (date: string) => {
+     setIncomeRecords(prev => prev.filter(r => r.date !== date));
+  };
 
   const handleClearAllData = () => {
     setSnapshots([]);
@@ -227,8 +242,20 @@ const App: React.FC = () => {
     setView('dashboard');
   };
 
-  const startEdit = (snapshot: Snapshot) => { setEditingSnapshot(snapshot); setIsFormOpen(true); setMobileMenuOpen(false); };
-  const startNew = () => { setEditingSnapshot(null); setIsFormOpen(true); setMobileMenuOpen(false); };
+  const startEdit = (snapshot: Snapshot) => { 
+    setEditingSnapshot(snapshot); 
+    setFormTab('asset'); // Force asset tab when editing snapshot
+    setIsFormOpen(true); 
+    setMobileMenuOpen(false); 
+  };
+
+  const startNew = () => { 
+    setEditingSnapshot(null); 
+    setFormTab('asset'); // Default to asset but allow switching
+    setIsFormOpen(true); 
+    setMobileMenuOpen(false); 
+  };
+
   const handleNavClick = (mode: ViewMode) => { setView(mode); setIsFormOpen(false); setMobileMenuOpen(false); };
 
   const handleBulkImport = (importItems: BulkImportItem[]) => {
@@ -307,7 +334,7 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        <nav className={`flex-1 p-4 space-y-2 ${mobileMenuOpen ? 'block' : 'hidden'} md:block`}>
+        <nav className={`flex-1 p-4 space-y-2 ${mobileMenuOpen ? 'block' : 'hidden'} md:block overflow-y-auto`}>
           <button onClick={() => handleNavClick('dashboard')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'dashboard' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
             {t.dashboard}
@@ -342,13 +369,13 @@ const App: React.FC = () => {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             {t.settings}
           </button>
+          
+          <div className="pt-4 mt-auto border-t border-slate-700/50">
+             <Button onClick={startNew} className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-lg">
+               + {t.newRecord}
+             </Button>
+          </div>
         </nav>
-
-        <div className={`p-4 border-t border-slate-700 ${mobileMenuOpen ? 'block' : 'hidden'} md:block`}>
-           <Button onClick={startNew} className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 text-white border-0">
-             + {t.newSnapshot}
-           </Button>
-        </div>
       </aside>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 relative">
@@ -371,7 +398,7 @@ const App: React.FC = () => {
         <header className="mb-8 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-              {isFormOpen ? (editingSnapshot ? t.editSnapshot : t.newSnapshot) : (
+              {isFormOpen ? (editingSnapshot ? t.editSnapshot : t.newRecord) : (
                 view === 'dashboard' ? t.overview : 
                 view === 'history' ? t.assetHistory : 
                 view === 'masterDatabase' ? t.masterDatabase : 
@@ -396,15 +423,44 @@ const App: React.FC = () => {
         </header>
 
         {isFormOpen ? (
-          <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 p-6 md:p-8 transition-colors">
-            <SnapshotForm 
-              existingSnapshot={editingSnapshot} 
-              onSave={handleSaveSnapshot} 
-              onCancel={() => { setIsFormOpen(false); setEditingSnapshot(null); }}
-              suggestedCategories={categories}
-              familyMembers={familyMembers}
-              language={language}
-            />
+          <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 transition-colors">
+            
+            {/* Form Type Tabs (Only for new records) */}
+            {!editingSnapshot && (
+              <div className="flex border-b border-slate-200 dark:border-slate-700">
+                <button 
+                  onClick={() => setFormTab('asset')}
+                  className={`flex-1 py-4 text-sm font-semibold uppercase tracking-wider transition-colors border-b-2 ${formTab === 'asset' ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                >
+                  {t.assetSnapshots}
+                </button>
+                <button 
+                  onClick={() => setFormTab('income')}
+                  className={`flex-1 py-4 text-sm font-semibold uppercase tracking-wider transition-colors border-b-2 ${formTab === 'income' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                >
+                  {t.incomeRecords}
+                </button>
+              </div>
+            )}
+            
+            <div className="p-6 md:p-8">
+              {formTab === 'asset' ? (
+                <SnapshotForm 
+                  existingSnapshot={editingSnapshot} 
+                  onSave={handleSaveSnapshot} 
+                  onCancel={() => { setIsFormOpen(false); setEditingSnapshot(null); }}
+                  suggestedCategories={categories}
+                  familyMembers={familyMembers}
+                  language={language}
+                />
+              ) : (
+                <IncomeForm 
+                  onSave={handleSaveIncome}
+                  onCancel={() => { setIsFormOpen(false); setEditingSnapshot(null); }}
+                  language={language}
+                />
+              )}
+            </div>
           </div>
         ) : (
           <>
@@ -418,11 +474,13 @@ const App: React.FC = () => {
             )}
             {view === 'history' && (
               <HistoryView 
-                snapshots={snapshots} 
+                snapshots={snapshots}
+                incomeRecords={incomeRecords} 
                 availableCategories={categories}
                 familyMembers={familyMembers}
                 onEdit={startEdit} 
-                onDelete={handleDeleteSnapshot} 
+                onDelete={handleDeleteSnapshot}
+                onDeleteIncome={handleDeleteIncomeGroup}
                 language={language}
               />
             )}

@@ -82,11 +82,20 @@ export const translations: Translations = {
     addAssetLine: "Add Asset Line",
     saveSnapshot: "Save Snapshot",
     cancel: "Cancel",
+    newRecord: "New Record",
     newSnapshot: "New Snapshot",
     editSnapshot: "Edit Snapshot",
-    formDesc: "Log your assets for a specific date and family member.",
+    formDesc: "Record your financial data.",
     namePlaceholder: "Name (e.g. Chase Checking)",
     
+    // Income Form
+    newIncomeRecord: "New Income Record",
+    incomeDetails: "Income Details",
+    total: "Total",
+    sourcePlaceholder: "Source (e.g. Apple Stock)",
+    addIncomeLine: "Add Income Line",
+    saveIncome: "Save Income",
+
     // Bulk
     parseData: "Parse Data",
     importItems: "Import Items",
@@ -204,10 +213,19 @@ export const translations: Translations = {
     addAssetLine: "添加资产行",
     saveSnapshot: "保存记录",
     cancel: "取消",
+    newRecord: "新建记录",
     newSnapshot: "新建记录",
     editSnapshot: "编辑记录",
-    formDesc: "记录特定日期和家庭成员的资产。",
+    formDesc: "记录您的财务数据。",
     namePlaceholder: "名称 (例如：招商银行储蓄)",
+
+    // Income Form
+    newIncomeRecord: "新建收入记录",
+    incomeDetails: "收入明细",
+    total: "总计",
+    sourcePlaceholder: "来源 (例如：苹果股票)",
+    addIncomeLine: "添加收入行",
+    saveIncome: "保存收入",
 
     // Bulk
     parseData: "解析数据",

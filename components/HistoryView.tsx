@@ -1,23 +1,29 @@
+
 import React, { useMemo, useState } from 'react';
-import { Snapshot, Language, AssetItem } from '../types';
+import { Snapshot, Language, AssetItem, IncomeRecord } from '../types';
 import { Card } from './ui/Card';
 import { translations } from '../utils/translations';
 
 interface HistoryViewProps {
   snapshots: Snapshot[];
+  incomeRecords: IncomeRecord[];
   availableCategories: string[]; // Kept for prop compatibility, but unused for filtering options
   familyMembers: string[];      // Kept for prop compatibility, but unused for filtering options
   onEdit: (s: Snapshot) => void;
   onDelete: (id: string) => void;
+  onDeleteIncome: (date: string) => void;
   language: Language;
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ 
-  snapshots, 
+  snapshots,
+  incomeRecords, 
   onEdit, 
-  onDelete, 
+  onDelete,
+  onDeleteIncome, 
   language 
 }) => {
+  const [dataSource, setDataSource] = useState<'assets' | 'income'>('assets');
   const [filterCategory, setFilterCategory] = useState('All');
   const [filterMember, setFilterMember] = useState('All');
   const [filterStartDate, setFilterStartDate] = useState('');
@@ -31,49 +37,75 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     const cats = new Set<string>();
     const months = new Set<string>();
 
-    snapshots.forEach(s => {
-      if (s.familyMember) members.add(s.familyMember);
-      if (s.date) months.add(s.date.substring(0, 7)); // YYYY-MM
-      s.items.forEach(i => {
-        if (i.category && i.category.trim() !== '') {
-          cats.add(i.category);
-        }
+    if (dataSource === 'assets') {
+      snapshots.forEach(s => {
+        if (s.familyMember) members.add(s.familyMember);
+        if (s.date) months.add(s.date.substring(0, 7)); // YYYY-MM
+        s.items.forEach(i => {
+          if (i.category && i.category.trim() !== '') {
+            cats.add(i.category);
+          }
+        });
       });
-    });
+    } else {
+      incomeRecords.forEach(r => {
+        if (r.date) months.add(r.date.substring(0, 7));
+        if (r.category) cats.add(r.category);
+      });
+    }
 
     return {
       usedMembers: Array.from(members).sort(),
       usedCategories: Array.from(cats).sort(),
       usedMonths: Array.from(months).sort().reverse() // Newest first
     };
-  }, [snapshots]);
+  }, [snapshots, incomeRecords, dataSource]);
   
-  // Sort chronological
-  const sortedSnapshots = useMemo(() => {
-    return [...snapshots].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [snapshots]);
+  // Sort and Filter Data
+  const filteredData = useMemo(() => {
+    if (dataSource === 'assets') {
+        const sorted = [...snapshots].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return sorted.filter(s => {
+            if (filterMember !== 'All' && s.familyMember !== filterMember) return false;
+            if (filterCategory !== 'All' && !s.items.some(i => i.category === filterCategory)) return false;
+            if (filterStartDate && s.date < `${filterStartDate}-01`) return false;
+            if (filterEndDate && s.date > `${filterEndDate}-31`) return false;
+            return true;
+        });
+    } else {
+        // Group Income by Date to mimic Snapshots structure
+        const grouped: Record<string, IncomeRecord[]> = {};
+        incomeRecords.forEach(r => {
+            if (!grouped[r.date]) grouped[r.date] = [];
+            grouped[r.date].push(r);
+        });
 
-  const filteredSnapshots = sortedSnapshots.filter(s => {
-    // 1. Family Member Filter
-    if (filterMember !== 'All' && s.familyMember !== filterMember) return false;
+        const groups = Object.keys(grouped).map(date => {
+            const items = grouped[date];
+            const total = items.reduce((sum, i) => sum + i.value, 0);
+            return {
+                id: date, // Use date as ID for the group
+                date,
+                familyMember: 'Income', // Placeholder
+                items: items, // IncomeRecord structure matches generic usage enough or we map it
+                totalValue: total
+            };
+        }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // 2. Category Filter (Show snapshot if ANY item matches the category)
-    if (filterCategory !== 'All' && !s.items.some(i => i.category === filterCategory)) return false;
+        return groups.filter(g => {
+            // No family member filter for Income
+            // Category filter: Show group if any item matches
+            if (filterCategory !== 'All' && !g.items.some(i => i.category === filterCategory)) return false;
+            if (filterStartDate && g.date < `${filterStartDate}-01`) return false;
+            if (filterEndDate && g.date > `${filterEndDate}-31`) return false;
+            return true;
+        });
+    }
+  }, [snapshots, incomeRecords, dataSource, filterMember, filterCategory, filterStartDate, filterEndDate]);
 
-    // 3. Date Range Filter
-    if (filterStartDate && s.date < `${filterStartDate}-01`) return false;
-    if (filterEndDate && s.date > `${filterEndDate}-31`) return false;
-
-    return true;
-  });
-
-  const isItemHighlighted = (item: AssetItem) => {
-    // If category filter is All, no specific highlighting
+  const isItemHighlighted = (item: any) => {
     if (filterCategory === 'All') return false;
-
-    // Highlight items that match the selected category
     if (item.category === filterCategory) return true;
-
     return false;
   };
 
@@ -83,18 +115,39 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
          <div className="flex flex-wrap items-center gap-4">
              
-             {/* Family Member */}
-             <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.familyMember}:</span>
-                <select 
-                    value={filterMember} 
-                    onChange={(e) => setFilterMember(e.target.value)}
-                    className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
-                >
-                    <option value="All">{t.allFamily}</option>
-                    {usedMembers.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+             {/* Data Source Toggle */}
+             <div className="flex items-center gap-2 mr-2">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.dataSource}:</span>
+                <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+                   <button 
+                     onClick={() => { setDataSource('assets'); setFilterMember('All'); setFilterCategory('All'); }}
+                     className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${dataSource === 'assets' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                   >
+                     {t.viewAssets}
+                   </button>
+                   <button 
+                     onClick={() => { setDataSource('income'); setFilterMember('All'); setFilterCategory('All'); }}
+                     className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${dataSource === 'income' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                   >
+                     {t.viewIncome}
+                   </button>
+                </div>
             </div>
+
+             {/* Family Member (Assets Only) */}
+             {dataSource === 'assets' && (
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.familyMember}:</span>
+                    <select 
+                        value={filterMember} 
+                        onChange={(e) => setFilterMember(e.target.value)}
+                        className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+                    >
+                        <option value="All">{t.allFamily}</option>
+                        {usedMembers.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                </div>
+             )}
 
             {/* Category */}
             <div className="flex items-center gap-2">
@@ -135,7 +188,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 </select>
             </div>
 
-             {(filterStartDate || filterEndDate || filterCategory !== 'All' || filterMember !== 'All') && (
+             {(filterStartDate || filterEndDate || filterCategory !== 'All' || (dataSource === 'assets' && filterMember !== 'All')) && (
                <button 
                  onClick={() => { 
                    setFilterStartDate(''); 
@@ -153,39 +206,45 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       </div>
 
       <div className="space-y-4">
-        {filteredSnapshots.map(snapshot => (
-          <Card key={snapshot.id} className="hover:shadow-md transition-all relative">
+        {filteredData.map(group => (
+          <Card key={group.id} className="hover:shadow-md transition-all relative">
             <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
                <div>
                  <div className="flex items-center gap-2 mb-1">
-                   <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{snapshot.date}</h3>
-                   <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full font-medium">
-                     {snapshot.familyMember || 'Me'}
+                   <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{group.date}</h3>
+                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${dataSource === 'assets' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
+                     {dataSource === 'assets' ? (group.familyMember || 'Me') : t.investmentIncome}
                    </span>
                  </div>
-                 {snapshot.note && <p className="text-sm text-slate-500 dark:text-slate-400 italic">{snapshot.note}</p>}
+                 {dataSource === 'assets' && (group as Snapshot).note && <p className="text-sm text-slate-500 dark:text-slate-400 italic">{(group as Snapshot).note}</p>}
                </div>
                <div className="flex items-center gap-4 mt-2 md:mt-0">
                  <div className="text-right">
-                    <span className="block text-xl font-bold text-green-600 dark:text-green-400 font-mono">
-                      {snapshot.totalValue.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                    <span className={`block text-xl font-bold font-mono ${dataSource === 'assets' ? 'text-green-600 dark:text-green-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {group.totalValue.toLocaleString(undefined, { minimumFractionDigits: 0 })}
                     </span>
                     <span className="text-xs text-slate-400">{t.totalValue} (Sum)</span>
                  </div>
                  <div className="flex items-center gap-1 ml-4">
+                    {dataSource === 'assets' && (
+                        <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onEdit(group as Snapshot); }}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            title={t.edit}
+                        >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        </button>
+                    )}
                     <button 
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); onEdit(snapshot); }}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        title={t.edit}
-                    >
-                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                       </svg>
-                    </button>
-                    <button 
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); onDelete(snapshot.id); }}
+                        onClick={(e) => { 
+                            e.stopPropagation(); 
+                            if (dataSource === 'assets') onDelete(group.id);
+                            else onDeleteIncome(group.date);
+                        }}
                         className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
                         title={t.delete}
                     >
@@ -199,7 +258,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
             {/* Accordion-like detail view */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {snapshot.items.map(item => (
+              {group.items.map((item: any) => (
                 <div key={item.id} className={`p-3 rounded border text-sm flex justify-between items-center transition-colors ${
                   isItemHighlighted(item)
                     ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 ring-2 ring-blue-100 dark:ring-blue-900/40' 
@@ -217,7 +276,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             </div>
           </Card>
         ))}
-        {filteredSnapshots.length === 0 && (
+        {filteredData.length === 0 && (
           <div className="text-center py-12 text-slate-500 dark:text-slate-400">
             {t.noRecords}
           </div>

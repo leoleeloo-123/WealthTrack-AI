@@ -111,6 +111,9 @@ export const translations: Translations = {
     deleteAll: "Delete All Data",
     deleteWarning: "This will wipe all snapshots, reset categories to default, and remove all family members from this browser.",
     deleteConfirm: "⚠️ DANGER: Are you sure you want to delete ALL data?\n\nThis includes all snapshots, custom categories, and family members.",
+    generateDemo: "Generate Demo Data",
+    generateDemoDesc: "Populate the app with sample data to test features. (Will be added to existing data)",
+    generate: "Generate",
 
     // Settings
     tagControl: "Tag Control",
@@ -230,6 +233,9 @@ export const translations: Translations = {
     deleteAll: "删除所有数据",
     deleteWarning: "这将清除本浏览器中的所有记录、自定义类别和家庭成员。",
     deleteConfirm: "⚠️ 警告：确定要删除所有数据吗？\n\n这将包括所有快照、自定义类别和家庭成员。",
+    generateDemo: "生成演示数据",
+    generateDemoDesc: "使用样本数据填充应用程序以测试功能。（将添加到现有数据中）",
+    generate: "生成",
 
     // Settings
     tagControl: "标签管理",

@@ -218,6 +218,15 @@ const App: React.FC = () => {
     localStorage.removeItem('wealthtrack_members');
   };
 
+  const handleGenerateDemoData = () => {
+    const demo = generateDemoData();
+    // Append to existing
+    setSnapshots(prev => [...prev, ...demo.snapshots]);
+    setIncomeRecords(prev => [...prev, ...demo.incomeRecords]);
+    setIsDemoMode(true);
+    setView('dashboard');
+  };
+
   const startEdit = (snapshot: Snapshot) => { setEditingSnapshot(snapshot); setIsFormOpen(true); setMobileMenuOpen(false); };
   const startNew = () => { setEditingSnapshot(null); setIsFormOpen(true); setMobileMenuOpen(false); };
   const handleNavClick = (mode: ViewMode) => { setView(mode); setIsFormOpen(false); setMobileMenuOpen(false); };
@@ -462,6 +471,7 @@ const App: React.FC = () => {
                 snapshots={snapshots}
                 incomeRecords={incomeRecords}
                 onClearAllData={handleClearAllData}
+                onGenerateDemoData={handleGenerateDemoData}
                 language={language}
               />
             )}

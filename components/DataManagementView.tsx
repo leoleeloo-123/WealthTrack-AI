@@ -8,10 +8,17 @@ interface DataManagementViewProps {
   snapshots: Snapshot[];
   incomeRecords?: IncomeRecord[];
   onClearAllData: () => void;
+  onGenerateDemoData: () => void;
   language: Language;
 }
 
-export const DataManagementView: React.FC<DataManagementViewProps> = ({ snapshots, incomeRecords = [], onClearAllData, language }) => {
+export const DataManagementView: React.FC<DataManagementViewProps> = ({ 
+  snapshots, 
+  incomeRecords = [], 
+  onClearAllData, 
+  onGenerateDemoData,
+  language 
+}) => {
   const t = translations[language];
 
   const downloadCSV = (content: string, filename: string) => {
@@ -100,6 +107,28 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ snapshot
           </p>
           <Button onClick={handleExportData} variant="primary" className="whitespace-nowrap bg-emerald-600 hover:bg-emerald-700">
             {t.downloadCSV}
+          </Button>
+        </div>
+      </div>
+
+      {/* Demo Data Section */}
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div className="flex items-center gap-3 mb-4">
+           <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
+             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+           </div>
+           <div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t.generateDemo}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.generateDemoDesc}</p>
+           </div>
+        </div>
+        
+        <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+             {t.generateDemoDesc}
+          </p>
+          <Button onClick={onGenerateDemoData} variant="secondary" className="whitespace-nowrap">
+            {t.generate}
           </Button>
         </div>
       </div>

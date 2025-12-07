@@ -28,6 +28,19 @@ const RATES: Record<string, number> = {
   'INR': 0.012
 };
 
+// Consistent Color Palette
+const COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#06b6d4", "#84cc16"];
+
+// Deterministic color assignment based on string value
+const getCategoryColor = (category: string) => {
+  let hash = 0;
+  for (let i = 0; i < category.length; i++) {
+    hash = category.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % COLORS.length;
+  return COLORS[index];
+};
+
 // Custom static label for Pie Chart
 const renderCustomLabel = (props: any) => {
   const RADIAN = Math.PI / 180;
@@ -198,8 +211,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
     setIsAnalyzing(false);
   };
 
-  const colors = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#06b6d4", "#84cc16"];
-
   return (
     <div className="space-y-6">
       
@@ -312,7 +323,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
                     {filterCategory === 'All' ? (
                          <Area type="monotone" dataKey="total" stroke="#3b82f6" fillOpacity={1} fill="url(#colorTotal)" strokeWidth={2} />
                     ) : (
-                        <Area type="monotone" dataKey={dataKeys[0] || 'total'} stroke="#10b981" fill="#10b981" fillOpacity={0.3} strokeWidth={2} />
+                        <Area type="monotone" dataKey={dataKeys[0] || 'total'} stroke={getCategoryColor(filterCategory)} fill={getCategoryColor(filterCategory)} fillOpacity={0.3} strokeWidth={2} />
                     )}
                 </AreaChart>
             </ResponsiveContainer>
@@ -351,7 +362,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
                       labelLine={true}
                     >
                       {pieDataInfo.data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={colors[index % colors.length]} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+                        <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name)} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
                       ))}
                     </Pie>
                  </PieChart>
@@ -373,7 +384,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
                         <Tooltip formatter={(value: number) => `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                         <Legend wrapperStyle={{ fontSize: '10px' }} />
                         {dataKeys.slice(0, 10).map((key, index) => (
-                            <Bar key={key} dataKey={key} stackId="a" fill={colors[index % colors.length]} />
+                            <Bar key={key} dataKey={key} stackId="a" fill={getCategoryColor(key)} />
                         ))}
                     </BarChart>
                 </ResponsiveContainer>
@@ -419,7 +430,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
                                  {latestItems.map((item, idx) => (
                                    <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-700/50 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-100 dark:border-slate-700">
                                        <div className="flex items-center gap-2 overflow-hidden">
-                                           <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: colors[idx % colors.length] }}></div>
+                                           <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getCategoryColor(item.category) }}></div>
                                            <div className="flex flex-col min-w-0">
                                               <span className="text-sm text-slate-700 dark:text-slate-200 font-medium truncate" title={item.name}>{item.name}</span>
                                               <span className="text-[10px] text-slate-400 uppercase">{item.category}</span>

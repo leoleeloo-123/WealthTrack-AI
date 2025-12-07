@@ -1,3 +1,4 @@
+
 export interface AssetItem {
   id: string;
   category: string; // e.g., "Bank", "Stock", "Real Estate", "Loan"
@@ -25,13 +26,22 @@ export interface IncomeRecord {
   currency: string;
 }
 
+export interface StockPosition {
+  id: string;
+  ticker: string;     // e.g. AAPL
+  quantity: number;   // e.g. 10
+  avgCost: number;    // e.g. 150.00
+  currentPrice: number; // e.g. 175.00 (User updated)
+  currency: string;   // e.g. USD
+}
+
 export interface ChartDataPoint {
   date: string;
   total: number;
   [key: string]: number | string; // Dynamic keys for breakdown
 }
 
-export type ViewMode = 'dashboard' | 'history' | 'masterDatabase' | 'investmentIncome' | 'analysis' | 'settings' | 'bulk' | 'dataManagement';
+export type ViewMode = 'dashboard' | 'history' | 'masterDatabase' | 'investmentIncome' | 'stockMarket' | 'analysis' | 'settings' | 'bulk' | 'dataManagement';
 
 export type Language = 'en' | 'zh';
 export type Theme = 'light' | 'dark';

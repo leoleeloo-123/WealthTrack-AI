@@ -1,3 +1,4 @@
+
 import { Language } from '../types';
 
 type Translations = {
@@ -13,6 +14,7 @@ export const translations: Translations = {
     history: "History & Data",
     masterDatabase: "Master Database",
     investmentIncome: "Investment Income",
+    stockMarket: "Stock Market",
     bulkImport: "Bulk Import",
     dataManagement: "Data Management",
     settings: "Settings",
@@ -51,6 +53,9 @@ export const translations: Translations = {
     masterDbDesc: "A pivot-table view of your assets over time.",
     subTotal: "Sub Total",
     normalizedNote: "Values are normalized to approx. USD for aggregation.",
+    viewAssets: "View Assets",
+    viewIncome: "View Income",
+    dataSource: "Data Source",
 
     // Investment Income
     incomeOverview: "Income Overview",
@@ -62,6 +67,28 @@ export const translations: Translations = {
     incomeDesc: "Track dividends, interest, and other investment earnings.",
     recentIncome: "Recent Income Records",
     source: "Source",
+
+    // Stock Market
+    stockMarketDesc: "Track your stock portfolio performance and get AI-driven market insights.",
+    portfolioSummary: "Portfolio Summary",
+    totalMarketValue: "Total Market Value",
+    totalGainLoss: "Total Gain/Loss",
+    holdings: "Holdings",
+    addStock: "Add Stock",
+    ticker: "Ticker",
+    quantity: "Qty",
+    avgCost: "Avg Cost",
+    currentPrice: "Current Price",
+    marketValue: "Market Value",
+    gainLoss: "Gain/Loss",
+    return: "Return",
+    aiMarketAnalysis: "AI Market Analysis",
+    analyzePortfolio: "Analyze Portfolio",
+    refreshPrices: "Analysis will fetch latest news, but please manually update 'Current Price' for accurate math.",
+    updatePrices: "Update Prices",
+    updating: "Updating...",
+    priceUpdateSuccess: "Prices updated via Google Search.",
+    priceUpdateFail: "Failed to update prices.",
 
     // Form
     date: "Date",
@@ -123,6 +150,7 @@ export const translations: Translations = {
     history: "历史数据",
     masterDatabase: "总数据库",
     investmentIncome: "投资收入",
+    stockMarket: "股票市场",
     bulkImport: "批量导入",
     dataManagement: "数据管理",
     settings: "设置",
@@ -161,6 +189,9 @@ export const translations: Translations = {
     masterDbDesc: "资产随时间变化的透视表视图。",
     subTotal: "小计",
     normalizedNote: "数值已折算为约合美元以便汇总。",
+    viewAssets: "查看资产",
+    viewIncome: "查看收入",
+    dataSource: "数据来源",
 
     // Investment Income
     incomeOverview: "收入概览",
@@ -172,6 +203,28 @@ export const translations: Translations = {
     incomeDesc: "追踪股息、利息和其他投资收益。",
     recentIncome: "近期收入记录",
     source: "来源",
+
+    // Stock Market
+    stockMarketDesc: "追踪您的股票投资组合表现，并获取 AI 驱动的市场洞察。",
+    portfolioSummary: "投资组合摘要",
+    totalMarketValue: "总市值",
+    totalGainLoss: "总盈亏",
+    holdings: "持仓明细",
+    addStock: "添加股票",
+    ticker: "代码",
+    quantity: "数量",
+    avgCost: "平均成本",
+    currentPrice: "当前价格",
+    marketValue: "市值",
+    gainLoss: "盈亏",
+    return: "回报率",
+    aiMarketAnalysis: "AI 市场分析",
+    analyzePortfolio: "分析投资组合",
+    refreshPrices: "AI 分析将获取最新新闻，但请手动更新“当前价格”以确保计算准确。",
+    updatePrices: "更新实时价格",
+    updating: "更新中...",
+    priceUpdateSuccess: "已通过 Google 搜索更新价格。",
+    priceUpdateFail: "价格更新失败。",
 
     // Form
     date: "日期",

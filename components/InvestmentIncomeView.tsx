@@ -12,34 +12,64 @@ interface InvestmentIncomeViewProps {
   language: Language;
 }
 
-const COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899"];
+// Consistent Color Palette matching Dashboard
+const COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#06b6d4", "#84cc16"];
+
+// Deterministic color assignment based on string value
+const getCategoryColor = (category: string) => {
+  let hash = 0;
+  for (let i = 0; i < category.length; i++) {
+    hash = category.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % COLORS.length;
+  return COLORS[index];
+};
 
 export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ incomeRecords, language }) => {
   const [filterYear, setFilterYear] = useState('All');
+  const [filterCategory, setFilterCategory] = useState('All');
   const t = translations[language];
 
   // Derive Data
-  const { chartData, pieData, kpi } = useMemo(() => {
-    const currentYear = new Date().getFullYear().toString();
-    const years = new Set<string>();
+  const { chartData, pieData, kpi, years, availableCategories } = useMemo(() => {
+    const currentYearStr = new Date().getFullYear().toString();
+    const isSpecificYear = filterYear !== 'All';
+    
+    // 1. Collect all available options for dropdowns (from full dataset)
+    const uniqueYears = new Set<string>();
+    const uniqueCategories = new Set<string>();
+    incomeRecords.forEach(rec => {
+      uniqueYears.add(rec.date.substring(0, 4));
+      uniqueCategories.add(rec.category);
+    });
     
     // Aggregation maps
     const byMonth: Record<string, { date: string; [key: string]: number | string }> = {};
     const byCategory: Record<string, number> = {};
     
-    let totalAllTime = 0;
+    let totalFiltered = 0;
     let totalYTD = 0;
+    let countInFiltered = 0;
 
     incomeRecords.forEach(rec => {
       const year = rec.date.substring(0, 4);
-      years.add(year);
       
-      // Filter logic
-      if (filterYear !== 'All' && year !== filterYear) return;
+      // Calculate YTD separately regardless of filter (for the "Current YTD" card context)
+      // Note: If user filters by Category, YTD should probably reflect that category too.
+      // So we apply category filter to YTD calculation as well.
+      if (year === currentYearStr) {
+         if (filterCategory === 'All' || rec.category === filterCategory) {
+            totalYTD += rec.value;
+         }
+      }
 
-      // KPI
-      totalAllTime += rec.value;
-      if (year === currentYear) totalYTD += rec.value;
+      // --- Main Filter Logic ---
+      if (isSpecificYear && year !== filterYear) return;
+      if (filterCategory !== 'All' && rec.category !== filterCategory) return;
+
+      // KPI for filtered set
+      totalFiltered += rec.value;
+      countInFiltered++;
 
       // Bar Chart Data (Group by Month)
       const monthKey = rec.date.substring(0, 7); // YYYY-MM
@@ -53,8 +83,23 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
     });
 
     // Format Bar Data
-    const sortedMonths = Object.keys(byMonth).sort();
-    const barData = sortedMonths.map(m => byMonth[m]);
+    let barData: any[] = [];
+    if (isSpecificYear) {
+        // If specific year, force all 12 months (01-12)
+        for (let i = 1; i <= 12; i++) {
+            const m = i < 10 ? `0${i}` : `${i}`;
+            const key = `${filterYear}-${m}`;
+            if (byMonth[key]) {
+                barData.push(byMonth[key]);
+            } else {
+                barData.push({ date: key }); // Empty month
+            }
+        }
+    } else {
+        // Show all months present in data sorted
+        const sortedMonths = Object.keys(byMonth).sort();
+        barData = sortedMonths.map(m => byMonth[m]);
+    }
     
     // Format Pie Data
     const pieDataList = Object.keys(byCategory).map(cat => ({
@@ -62,21 +107,35 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
       value: byCategory[cat]
     })).sort((a, b) => b.value - a.value);
 
-    // Calculate Monthly Avg (based on filtered range)
-    const monthCount = sortedMonths.length || 1;
-    const monthlyAvg = totalAllTime / monthCount;
+    // Calculate Monthly Avg
+    let divisor = 1;
+    if (filterYear === 'All') {
+        divisor = Object.keys(byMonth).length || 1; // Avg over active months
+    } else {
+        if (filterYear === currentYearStr) {
+            // For current year, avg over elapsed months
+            const currentMonth = new Date().getMonth() + 1; // 1-12
+            divisor = currentMonth;
+        } else {
+            // Past year: always divide by 12
+            divisor = 12;
+        }
+    }
+    const monthlyAvg = totalFiltered / divisor;
 
     return {
-      years: Array.from(years).sort().reverse(),
+      years: Array.from(uniqueYears).sort().reverse(),
+      availableCategories: Array.from(uniqueCategories).sort(),
       chartData: barData,
       pieData: pieDataList,
       kpi: {
-        total: totalAllTime,
+        total: totalFiltered,
         ytd: totalYTD,
-        monthlyAvg
+        monthlyAvg,
+        transactionCount: countInFiltered
       }
     };
-  }, [incomeRecords, filterYear]);
+  }, [incomeRecords, filterYear, filterCategory]);
 
   // Extract keys for stacking bars
   const barKeys = useMemo(() => {
@@ -89,24 +148,55 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
     return Array.from(keys);
   }, [chartData]);
 
+  // Determine what to show in the second KPI card
+  const currentYearStr = new Date().getFullYear().toString();
+  const showYTD = filterYear === 'All' || filterYear === currentYearStr;
+
   return (
     <div className="space-y-6 animate-fade-in">
       
       {/* Filters */}
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
-        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Filter Year:</span>
-        <select 
-          value={filterYear}
-          onChange={(e) => setFilterYear(e.target.value)}
-          className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
-        >
-          <option value="All">All Time</option>
-          {/* We calculate years inside useMemo, but accessing it via a simple separate pass or just filtering unique years from records for the dropdown is fine. 
-              For simplicity, let's assume records exist. */}
-          {Array.from(new Set(incomeRecords.map(r => r.date.substring(0,4)))).sort().reverse().map(y => (
-             <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center gap-4 transition-colors">
+        
+        {/* Year Filter */}
+        <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Year:</span>
+            <select 
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
+            className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+            >
+            <option value="All">All Time</option>
+            {years.map(y => (
+                <option key={y} value={y}>{y}</option>
+            ))}
+            </select>
+        </div>
+
+        {/* Category Filter */}
+        <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{t.category}:</span>
+            <select 
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+            >
+            <option value="All">All</option>
+            {availableCategories.map(c => (
+                <option key={c} value={c}>{c}</option>
+            ))}
+            </select>
+        </div>
+
+        {(filterYear !== 'All' || filterCategory !== 'All') && (
+            <button 
+                onClick={() => { setFilterYear('All'); setFilterCategory('All'); }}
+                className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                title="Clear Filters"
+            >
+                ✕
+            </button>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -117,12 +207,18 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
             <p className="text-3xl font-bold font-mono">${kpi.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </div>
         </Card>
+        
         <Card>
           <div className="text-slate-800 dark:text-slate-200">
-            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t.ytdIncome} (Current Year)</h3>
-            <p className="text-3xl font-bold font-mono">${kpi.ytd.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                {showYTD ? `${t.ytdIncome} (Current)` : 'Transactions'}
+            </h3>
+            <p className="text-3xl font-bold font-mono">
+                {showYTD ? `$${kpi.ytd.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : kpi.transactionCount}
+            </p>
           </div>
         </Card>
+        
         <Card>
           <div className="text-slate-800 dark:text-slate-200">
             <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t.monthlyAvg}</h3>
@@ -148,7 +244,7 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
                 />
                 <Legend />
                 {barKeys.map((key, index) => (
-                  <Bar key={key} dataKey={key} stackId="a" fill={COLORS[index % COLORS.length]} />
+                  <Bar key={key} dataKey={key} stackId="a" fill={getCategoryColor(key)} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
@@ -170,7 +266,7 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
                   dataKey="value"
                 >
                   {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(255,255,255,0.2)" />
+                    <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name)} stroke="rgba(255,255,255,0.2)" />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
@@ -195,13 +291,17 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {[...incomeRecords]
+                .filter(rec => filterYear === 'All' || rec.date.startsWith(filterYear))
+                .filter(rec => filterCategory === 'All' || rec.category === filterCategory)
                 .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                 .slice(0, 10) // Show last 10
                 .map(rec => (
                 <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                   <td className="px-4 py-3 whitespace-nowrap">{rec.date}</td>
                   <td className="px-4 py-3">
-                    <span className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs">{rec.category}</span>
+                    <span className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs" style={{ color: getCategoryColor(rec.category), backgroundColor: getCategoryColor(rec.category) + '20' }}>
+                      {rec.category}
+                    </span>
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-200">{rec.name}</td>
                   <td className="px-4 py-3 text-right font-mono text-emerald-600 dark:text-emerald-400">

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Dashboard } from './components/Dashboard';
@@ -254,13 +255,8 @@ const App: React.FC = () => {
   };
 
   const handleImportIncome = (items: IncomeRecord[]) => {
-    // Add logic to overwrite specific dates if needed, but for income usually we append or merge
-    // For simplicity, we just append unique records or simple merge. 
-    // Let's filter out exact duplicates (same date, name, category, value) just in case
     const existingSignatures = new Set(incomeRecords.map(r => `${r.date}-${r.category}-${r.name}-${r.value}`));
-    
     const newItems = items.filter(r => !existingSignatures.has(`${r.date}-${r.category}-${r.name}-${r.value}`));
-    
     setIncomeRecords([...incomeRecords, ...newItems]);
     setView('investmentIncome');
   };
@@ -307,7 +303,6 @@ const App: React.FC = () => {
             {t.masterDatabase}
           </button>
 
-          {/* New Investment Income Link */}
           <button onClick={() => handleNavClick('investmentIncome')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'investmentIncome' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
             {t.investmentIncome}
@@ -398,6 +393,7 @@ const App: React.FC = () => {
              {view === 'masterDatabase' && (
               <MasterDatabaseView 
                 snapshots={snapshots} 
+                incomeRecords={incomeRecords}
                 availableCategories={categories}
                 familyMembers={familyMembers}
                 language={language}

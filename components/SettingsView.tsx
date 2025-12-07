@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
@@ -10,6 +11,11 @@ interface SettingsViewProps {
   onRenameCategory: (oldName: string, newName: string) => void;
   onDeleteCategory: (category: string) => void;
   
+  incomeCategories: string[];
+  onAddIncomeCategory: (category: string) => void;
+  onRenameIncomeCategory: (oldName: string, newName: string) => void;
+  onDeleteIncomeCategory: (category: string) => void;
+
   familyMembers: string[];
   onAddMember: (name: string) => void;
   onRenameMember: (oldName: string, newName: string) => void;
@@ -183,12 +189,24 @@ export const SettingsView: React.FC<SettingsViewProps> = (props) => {
       {/* Tag Control Section */}
       <div>
         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4 px-1">{t.tagControl}</h2>
+        
         <ListEditor
           title={t.assetCategories}
           items={props.categories}
           onAdd={props.onAddCategory}
           onRename={props.onRenameCategory}
           onDelete={props.onDeleteCategory}
+          placeholder={t.newCategoryPlaceholder}
+          warning={t.renameWarning}
+          lang={props.language}
+        />
+
+        <ListEditor
+          title={t.incomeCategories}
+          items={props.incomeCategories}
+          onAdd={props.onAddIncomeCategory}
+          onRename={props.onRenameIncomeCategory}
+          onDelete={props.onDeleteIncomeCategory}
           placeholder={t.newCategoryPlaceholder}
           warning={t.renameWarning}
           lang={props.language}

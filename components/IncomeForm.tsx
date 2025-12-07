@@ -9,20 +9,21 @@ interface IncomeFormProps {
   onSave: (records: IncomeRecord[]) => void;
   onCancel: () => void;
   language: Language;
+  availableCategories: string[];
 }
 
 const COMMON_CURRENCIES = ['USD', 'EUR', 'CNY', 'GBP', 'JPY', 'CAD', 'AUD', 'INR', 'SGD'];
-const SUGGESTED_CATEGORIES = ['Dividend', 'Interest', 'Rent', 'Salary', 'Bonus', 'Capital Gains', 'Other'];
 
 export const IncomeForm: React.FC<IncomeFormProps> = ({ 
   onSave, 
   onCancel, 
-  language
+  language,
+  availableCategories
 }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   // We use a simplified internal structure for the form state
   const [items, setItems] = useState<{ id: string; category: string; name: string; value: number; currency: string }[]>([
-    { id: uuidv4(), category: 'Dividend', name: '', value: 0, currency: 'USD' }
+    { id: uuidv4(), category: availableCategories[0] || 'Dividend', name: '', value: 0, currency: 'USD' }
   ]);
   const t = translations[language];
 
@@ -142,7 +143,7 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
       </div>
 
       <datalist id="income-categories">
-        {SUGGESTED_CATEGORIES.map(cat => (
+        {availableCategories.map(cat => (
           <option key={cat} value={cat} />
         ))}
       </datalist>

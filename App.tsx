@@ -16,10 +16,12 @@ import { translations } from './utils/translations';
 import { generateDemoData } from './utils/demoData';
 
 const DEFAULT_CATEGORIES = ['Bank', 'Stock', 'Real Estate', 'Crypto', 'Bond', 'Loan', 'Vehicle', 'Cash', 'Other'];
+const DEFAULT_INCOME_CATEGORIES = ['Dividend', 'Interest', 'Rent', 'Salary', 'Bonus', 'Capital Gains', 'Other'];
 const DEFAULT_MEMBERS = ['Me'];
 
 // --- Translation Maps ---
 const EN_TO_ZH: Record<string, string> = {
+  // Asset Categories
   'Bank': '银行',
   'Stock': '股票',
   'Real Estate': '房地产',
@@ -31,6 +33,14 @@ const EN_TO_ZH: Record<string, string> = {
   'Other': '其他',
   'Fixed Income': '固定收益',
   'Private Loan': '私人贷款',
+  // Income Categories
+  'Dividend': '股息',
+  'Interest': '利息',
+  'Rent': '租金',
+  'Salary': '工资',
+  'Bonus': '奖金',
+  'Capital Gains': '资本收益',
+  // Family
   'Me': '我',
   'Dad': '爸爸',
   'Mom': '妈妈',
@@ -38,6 +48,7 @@ const EN_TO_ZH: Record<string, string> = {
 };
 
 const ZH_TO_EN: Record<string, string> = {
+  // Asset Categories
   '银行': 'Bank',
   '股票': 'Stock',
   '房地产': 'Real Estate',
@@ -49,6 +60,14 @@ const ZH_TO_EN: Record<string, string> = {
   '其他': 'Other',
   '固定收益': 'Fixed Income',
   '私人贷款': 'Private Loan',
+  // Income Categories
+  '股息': 'Dividend',
+  '利息': 'Interest',
+  '租金': 'Rent',
+  '工资': 'Salary',
+  '奖金': 'Bonus',
+  '资本收益': 'Capital Gains',
+  // Family
   '我': 'Me',
   '爸爸': 'Dad',
   '妈妈': 'Mom',
@@ -74,6 +93,7 @@ const App: React.FC = () => {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [incomeRecords, setIncomeRecords] = useState<IncomeRecord[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<string[]>([]);
   const [familyMembers, setFamilyMembers] = useState<string[]>([]);
   
   // Settings State
@@ -96,6 +116,9 @@ const App: React.FC = () => {
     // Configs
     const savedCats = localStorage.getItem('wealthtrack_categories');
     setCategories(savedCats ? JSON.parse(savedCats) : DEFAULT_CATEGORIES);
+
+    const savedIncomeCats = localStorage.getItem('wealthtrack_income_categories');
+    setIncomeCategories(savedIncomeCats ? JSON.parse(savedIncomeCats) : DEFAULT_INCOME_CATEGORIES);
 
     const savedMembers = localStorage.getItem('wealthtrack_members');
     setFamilyMembers(savedMembers ? JSON.parse(savedMembers) : DEFAULT_MEMBERS);
@@ -129,6 +152,7 @@ const App: React.FC = () => {
   useEffect(() => { if (isLoaded) localStorage.setItem('wealthtrack_data', JSON.stringify(snapshots)); }, [snapshots, isLoaded]);
   useEffect(() => { if (isLoaded) localStorage.setItem('wealthtrack_income', JSON.stringify(incomeRecords)); }, [incomeRecords, isLoaded]);
   useEffect(() => { if (isLoaded) localStorage.setItem('wealthtrack_categories', JSON.stringify(categories)); }, [categories, isLoaded]);
+  useEffect(() => { if (isLoaded) localStorage.setItem('wealthtrack_income_categories', JSON.stringify(incomeCategories)); }, [incomeCategories, isLoaded]);
   useEffect(() => { if (isLoaded) localStorage.setItem('wealthtrack_members', JSON.stringify(familyMembers)); }, [familyMembers, isLoaded]);
   
   useEffect(() => { 
@@ -158,13 +182,16 @@ const App: React.FC = () => {
     if (language === 'en' && newLang === 'zh') mapping = EN_TO_ZH;
     else if (language === 'zh' && newLang === 'en') mapping = ZH_TO_EN;
 
-    // 1. Translate Categories (Deduplicate)
+    // 1. Translate Asset Categories (Deduplicate)
     const newCategories = Array.from(new Set(categories.map(c => mapping[c] || c)));
 
-    // 2. Translate Family Members (Deduplicate)
+    // 2. Translate Income Categories (Deduplicate)
+    const newIncomeCategories = Array.from(new Set(incomeCategories.map(c => mapping[c] || c)));
+
+    // 3. Translate Family Members (Deduplicate)
     const newMembers = Array.from(new Set(familyMembers.map(m => mapping[m] || m)));
 
-    // 3. Translate Snapshots
+    // 4. Translate Snapshots
     const newSnapshots = snapshots.map(s => ({
       ...s,
       familyMember: mapping[s.familyMember] || s.familyMember,
@@ -174,10 +201,18 @@ const App: React.FC = () => {
       }))
     }));
 
+    // 5. Translate Income Records
+    const newIncomeRecords = incomeRecords.map(r => ({
+      ...r,
+      category: mapping[r.category] || r.category
+    }));
+
     // Update State
     setCategories(newCategories);
+    setIncomeCategories(newIncomeCategories);
     setFamilyMembers(newMembers);
     setSnapshots(newSnapshots);
+    setIncomeRecords(newIncomeRecords);
     setLanguage(newLang);
   };
 
@@ -189,6 +224,13 @@ const App: React.FC = () => {
       ...snapshot,
       items: snapshot.items.map(item => item.category === oldName ? { ...item, category: newName } : item)
     })));
+  };
+
+  const handleAddIncomeCategory = (name: string) => { if (!incomeCategories.includes(name)) setIncomeCategories([...incomeCategories, name]); };
+  const handleDeleteIncomeCategory = (name: string) => { setIncomeCategories(incomeCategories.filter(c => c !== name)); };
+  const handleRenameIncomeCategory = (oldName: string, newName: string) => {
+    setIncomeCategories(incomeCategories.map(c => c === oldName ? newName : c));
+    setIncomeRecords(prev => prev.map(r => r.category === oldName ? { ...r, category: newName } : r));
   };
 
   const handleAddMember = (name: string) => { if (!familyMembers.includes(name)) setFamilyMembers([...familyMembers, name]); };
@@ -225,11 +267,13 @@ const App: React.FC = () => {
     setSnapshots([]);
     setIncomeRecords([]);
     setCategories(DEFAULT_CATEGORIES);
+    setIncomeCategories(DEFAULT_INCOME_CATEGORIES);
     setFamilyMembers(DEFAULT_MEMBERS);
     setIsDemoMode(false);
     localStorage.removeItem('wealthtrack_data');
     localStorage.removeItem('wealthtrack_income');
     localStorage.removeItem('wealthtrack_categories');
+    localStorage.removeItem('wealthtrack_income_categories');
     localStorage.removeItem('wealthtrack_members');
   };
 
@@ -302,6 +346,16 @@ const App: React.FC = () => {
   };
 
   const handleImportIncome = (items: IncomeRecord[]) => {
+    const uniqueCategories = new Set(incomeCategories);
+    let catsChanged = false;
+    
+    items.forEach(item => {
+      const cat = item.category.trim();
+      if (cat && !uniqueCategories.has(cat)) { uniqueCategories.add(cat); catsChanged = true; }
+    });
+    
+    if (catsChanged) setIncomeCategories(Array.from(uniqueCategories));
+
     const existingSignatures = new Set(incomeRecords.map(r => `${r.date}-${r.category}-${r.name}-${r.value}`));
     const newItems = items.filter(r => !existingSignatures.has(`${r.date}-${r.category}-${r.name}-${r.value}`));
     setIncomeRecords([...incomeRecords, ...newItems]);
@@ -458,6 +512,7 @@ const App: React.FC = () => {
                   onSave={handleSaveIncome}
                   onCancel={() => { setIsFormOpen(false); setEditingSnapshot(null); }}
                   language={language}
+                  availableCategories={incomeCategories}
                 />
               )}
             </div>
@@ -505,6 +560,10 @@ const App: React.FC = () => {
                 onAddCategory={handleAddCategory}
                 onRenameCategory={handleRenameCategory}
                 onDeleteCategory={handleDeleteCategory}
+                incomeCategories={incomeCategories}
+                onAddIncomeCategory={handleAddIncomeCategory}
+                onRenameIncomeCategory={handleRenameIncomeCategory}
+                onDeleteIncomeCategory={handleDeleteIncomeCategory}
                 familyMembers={familyMembers}
                 onAddMember={handleAddMember}
                 onRenameMember={handleRenameMember}

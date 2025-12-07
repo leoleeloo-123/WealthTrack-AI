@@ -66,7 +66,7 @@ export const translations: Translations = {
     incomeOverview: "Income Overview",
     incomeHistory: "Income History",
     incomeBreakdown: "Income Breakdown",
-    totalIncome: "Total Income (All Time)",
+    totalIncome: "Total Income",
     ytdIncome: "YTD Income",
     monthlyAvg: "Monthly Average",
     incomeDesc: "Track dividends, interest, and other investment earnings.",
@@ -109,7 +109,7 @@ export const translations: Translations = {
     importType: "Import Type",
     assetSnapshots: "Asset Snapshots",
     incomeRecords: "Investment Income",
-    incomeFormat: "Expected format: Date | Category | Name | Value",
+    incomeFormat: "Expected format: Date | Category | Name | Value | Family Member | Currency",
     
     // Data Management
     dataBackup: "Data Backup",
@@ -198,7 +198,7 @@ export const translations: Translations = {
     incomeOverview: "收入概览",
     incomeHistory: "收入历史",
     incomeBreakdown: "收入分布",
-    totalIncome: "总收入 (累计)",
+    totalIncome: "总收入",
     ytdIncome: "今年收入 (YTD)",
     monthlyAvg: "月均收入",
     incomeDesc: "追踪股息、利息和其他投资收益。",
@@ -241,7 +241,7 @@ export const translations: Translations = {
     importType: "导入类型",
     assetSnapshots: "资产快照 (Asset Snapshots)",
     incomeRecords: "投资收入 (Investment Income)",
-    incomeFormat: "预期格式: 日期 | 类别 | 名称 | 金额",
+    incomeFormat: "预期格式: 日期 | 类别 | 名称 | 金额 | 家庭成员 | 货币",
 
     // Data Management
     dataBackup: "数据备份",

@@ -23,6 +23,7 @@ export interface IncomeRecord {
   category: string; // e.g., "Dividend", "Interest", "Rent"
   name: string;     // e.g., "Apple Stock", "US T-Bill"
   value: number;
+  familyMember: string; // Added for consistency
   currency: string;
 }
 

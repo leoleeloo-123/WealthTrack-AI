@@ -204,7 +204,8 @@ const App: React.FC = () => {
     // 5. Translate Income Records
     const newIncomeRecords = incomeRecords.map(r => ({
       ...r,
-      category: mapping[r.category] || r.category
+      category: mapping[r.category] || r.category,
+      familyMember: mapping[r.familyMember] || r.familyMember // Added familyMember translation
     }));
 
     // Update State
@@ -347,17 +348,21 @@ const App: React.FC = () => {
 
   const handleImportIncome = (items: IncomeRecord[]) => {
     const uniqueCategories = new Set(incomeCategories);
-    let catsChanged = false;
+    const uniqueMembers = new Set(familyMembers);
+    let catsChanged = false, membersChanged = false;
     
     items.forEach(item => {
       const cat = item.category.trim();
+      const mem = item.familyMember.trim();
       if (cat && !uniqueCategories.has(cat)) { uniqueCategories.add(cat); catsChanged = true; }
+      if (mem && !uniqueMembers.has(mem)) { uniqueMembers.add(mem); membersChanged = true; }
     });
     
     if (catsChanged) setIncomeCategories(Array.from(uniqueCategories));
+    if (membersChanged) setFamilyMembers(Array.from(uniqueMembers));
 
-    const existingSignatures = new Set(incomeRecords.map(r => `${r.date}-${r.category}-${r.name}-${r.value}`));
-    const newItems = items.filter(r => !existingSignatures.has(`${r.date}-${r.category}-${r.name}-${r.value}`));
+    const existingSignatures = new Set(incomeRecords.map(r => `${r.date}-${r.category}-${r.name}-${r.value}-${r.familyMember}`));
+    const newItems = items.filter(r => !existingSignatures.has(`${r.date}-${r.category}-${r.name}-${r.value}-${r.familyMember}`));
     setIncomeRecords([...incomeRecords, ...newItems]);
     setView('investmentIncome');
   };
@@ -513,6 +518,7 @@ const App: React.FC = () => {
                   onCancel={() => { setIsFormOpen(false); setEditingSnapshot(null); }}
                   language={language}
                   availableCategories={incomeCategories}
+                  familyMembers={familyMembers}
                 />
               )}
             </div>

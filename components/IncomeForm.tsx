@@ -10,6 +10,7 @@ interface IncomeFormProps {
   onCancel: () => void;
   language: Language;
   availableCategories: string[];
+  familyMembers: string[];
 }
 
 const COMMON_CURRENCIES = ['USD', 'EUR', 'CNY', 'GBP', 'JPY', 'CAD', 'AUD', 'INR', 'SGD'];
@@ -18,9 +19,12 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
   onSave, 
   onCancel, 
   language,
-  availableCategories
+  availableCategories,
+  familyMembers
 }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [familyMember, setFamilyMember] = useState(familyMembers[0] || 'Me');
+  
   // We use a simplified internal structure for the form state
   const [items, setItems] = useState<{ id: string; category: string; name: string; value: number; currency: string }[]>([
     { id: uuidv4(), category: availableCategories[0] || 'Dividend', name: '', value: 0, currency: 'USD' }
@@ -51,7 +55,8 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
         category: item.category || 'Other',
         name: item.name || item.category || 'Income',
         value: Number(item.value),
-        currency: item.currency
+        currency: item.currency,
+        familyMember: familyMember
       }));
 
     onSave(newRecords);
@@ -66,15 +71,27 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             {t.newIncomeRecord}
         </h3>
-        <div className="max-w-xs">
-          <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">{t.date}</label>
-          <input 
-            type="date" 
-            required
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className={inputStyle}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
+          <div>
+            <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">{t.date}</label>
+            <input 
+              type="date" 
+              required
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className={inputStyle}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">{t.familyMember}</label>
+            <select
+              value={familyMember}
+              onChange={(e) => setFamilyMember(e.target.value)}
+              className={inputStyle}
+            >
+              {familyMembers.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 

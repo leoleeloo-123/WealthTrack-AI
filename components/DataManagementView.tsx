@@ -62,15 +62,17 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({
     if (incomeRecords.length > 0) {
         // Need a small delay to ensure both downloads trigger in some browsers
         setTimeout(() => {
-            const incomeHeader = ['Date', 'Category', 'Name', 'Value', 'Currency'];
+            const incomeHeader = ['Date', 'Category', 'Name', 'Value', 'Family Member', 'Currency'];
             const incomeRows = incomeRecords.map(r => {
                 const cleanName = (r.name || '').replace(/,/g, ' ');
                 const cleanCategory = (r.category || '').replace(/,/g, ' ');
+                const cleanMember = (r.familyMember || 'Me').replace(/,/g, ' ');
                 return [
                     r.date,
                     cleanCategory,
                     cleanName,
                     r.value,
+                    cleanMember,
                     r.currency || 'USD'
                 ].join(',');
             });

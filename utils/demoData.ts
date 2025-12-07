@@ -71,6 +71,7 @@ export const generateDemoData = () => {
   for (let i = 0; i < 100; i++) {
     const d = generateDate(startDate, endDate);
     const cat = getRandomItem(INCOME_CATEGORIES);
+    const member = getRandomItem(MEMBERS);
     let val = 0;
     let name = '';
 
@@ -103,7 +104,8 @@ export const generateDemoData = () => {
         category: cat,
         name,
         value: val,
-        currency: 'USD'
+        currency: 'USD',
+        familyMember: member
     });
   }
 

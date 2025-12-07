@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from './ui/Button';
@@ -74,7 +75,7 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
         setStagedItems(parsed);
         if (parsed.length > 0) setStep('review');
     } else {
-        // Parse Income Records: Date | Category | Name | Value
+        // Parse Income Records: Date | Category | Name | Value | Family Member | Currency
         const parsed: IncomeRecord[] = [];
         rows.forEach(row => {
           const delimiter = row.includes('\t') ? '\t' : ',';
@@ -89,6 +90,9 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
              const category = cols[1] || 'Income';
              const name = cols[2] || 'Source';
              const valueStr = cols[3] || '0';
+             const familyMember = cols[4] || familyMembers[0] || 'Me'; // Default to first member
+             const currency = cols[5] || 'USD';
+
              const value = parseFloat(valueStr.replace(/[^0-9.-]/g, ''));
 
              if (!isNaN(value)) {
@@ -98,7 +102,8 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
                  category,
                  name,
                  value,
-                 currency: 'USD' // Default to USD for income for now
+                 familyMember,
+                 currency
                });
              }
           }
@@ -154,17 +159,13 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
                 {t.bulkDesc}
               </p>
               <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                 {importType === 'snapshot' ? (
-                   <span>{t.expectedFormat}: <strong>{t.date}</strong> | <strong>{t.category}</strong> | <strong>{t.name}</strong> | <strong>{t.value}</strong> | <strong>{t.familyMember}</strong> | <strong>{t.currency}</strong></span>
-                 ) : (
-                   <span>{t.incomeFormat}</span>
-                 )}
+                 <span>{t.expectedFormat}: <strong>{t.date}</strong> | <strong>{t.category}</strong> | <strong>{t.name}</strong> | <strong>{t.value}</strong> | <strong>{t.familyMember}</strong> | <strong>{t.currency}</strong></span>
               </p>
               <textarea
                 className="w-full h-64 p-4 border border-slate-300 dark:border-slate-600 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200"
                 placeholder={importType === 'snapshot' 
                   ? `2023-10-01\tBank\tChase\t5000\tDad\tUSD\n...` 
-                  : `2023-12-31\tDividend\tApple Stock\t45.50\n2023-12-31\tInterest\tT-Bill\t120.00`}
+                  : `2023-12-31\tDividend\tApple Stock\t45.50\tMe\tUSD\n2023-12-31\tInterest\tT-Bill\t120.00\tMom\tUSD`}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
               />
@@ -195,8 +196,8 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
                     <th className="pb-2">{t.category}</th>
                     <th className="pb-2">{t.name}</th>
                     <th className="pb-2">{t.value}</th>
-                    {importType === 'snapshot' && <th className="pb-2">{t.familyMember}</th>}
-                    {importType === 'snapshot' && <th className="pb-2">{t.currency}</th>}
+                    <th className="pb-2">{t.familyMember}</th>
+                    <th className="pb-2">{t.currency}</th>
                     <th className="pb-2"></th>
                   </tr>
                 </thead>
@@ -223,6 +224,8 @@ export const BulkEntryView: React.FC<BulkEntryViewProps> = ({ categories, family
                       <td className="py-2 pr-2">{item.category}</td>
                       <td className="py-2 pr-2">{item.name}</td>
                       <td className="py-2 pr-2 font-mono text-emerald-600">{item.value}</td>
+                      <td className="py-2 pr-2">{item.familyMember}</td>
+                      <td className="py-2 pr-2">{item.currency}</td>
                       <td className="py-2 text-right">
                          <button onClick={() => setStagedIncome(prev => prev.filter(i => i.id !== item.id))} className="text-red-400 hover:text-red-600">x</button>
                       </td>

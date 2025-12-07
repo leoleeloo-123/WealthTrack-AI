@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend
@@ -26,46 +27,49 @@ const getCategoryColor = (category: string) => {
 };
 
 export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ incomeRecords, language }) => {
-  const [filterYear, setFilterYear] = useState('All');
+  // Use same filters as Dashboard
   const [filterCategory, setFilterCategory] = useState('All');
+  const [filterMember, setFilterMember] = useState('All');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  
   const t = translations[language];
 
-  // Derive Data
-  const { chartData, pieData, kpi, years, availableCategories } = useMemo(() => {
-    const currentYearStr = new Date().getFullYear().toString();
-    const isSpecificYear = filterYear !== 'All';
-    
-    // 1. Collect all available options for dropdowns (from full dataset)
-    const uniqueYears = new Set<string>();
-    const uniqueCategories = new Set<string>();
+  // 0. Derive Filter Options from Data (Only show what exists)
+  const { usedMembers, usedCategories, usedMonths } = useMemo(() => {
+    const members = new Set<string>();
+    const cats = new Set<string>();
+    const months = new Set<string>();
+
     incomeRecords.forEach(rec => {
-      uniqueYears.add(rec.date.substring(0, 4));
-      uniqueCategories.add(rec.category);
+      if (rec.familyMember) members.add(rec.familyMember);
+      if (rec.date) months.add(rec.date.substring(0, 7)); // YYYY-MM
+      if (rec.category) cats.add(rec.category);
     });
+
+    return {
+      usedMembers: Array.from(members).sort(),
+      usedCategories: Array.from(cats).sort(),
+      usedMonths: Array.from(months).sort().reverse() // Newest first
+    };
+  }, [incomeRecords]);
+
+  // Derive Data and Charts
+  const { chartData, pieData, kpi } = useMemo(() => {
     
     // Aggregation maps
     const byMonth: Record<string, { date: string; [key: string]: number | string }> = {};
     const byCategory: Record<string, number> = {};
     
     let totalFiltered = 0;
-    let totalYTD = 0;
     let countInFiltered = 0;
 
     incomeRecords.forEach(rec => {
-      const year = rec.date.substring(0, 4);
-      
-      // Calculate YTD separately regardless of filter (for the "Current YTD" card context)
-      // Note: If user filters by Category, YTD should probably reflect that category too.
-      // So we apply category filter to YTD calculation as well.
-      if (year === currentYearStr) {
-         if (filterCategory === 'All' || rec.category === filterCategory) {
-            totalYTD += rec.value;
-         }
-      }
-
-      // --- Main Filter Logic ---
-      if (isSpecificYear && year !== filterYear) return;
+      // --- Filter Logic ---
+      if (filterMember !== 'All' && rec.familyMember !== filterMember) return;
       if (filterCategory !== 'All' && rec.category !== filterCategory) return;
+      if (filterStartDate && rec.date < `${filterStartDate}-01`) return;
+      if (filterEndDate && rec.date > `${filterEndDate}-31`) return;
 
       // KPI for filtered set
       totalFiltered += rec.value;
@@ -82,24 +86,9 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
       byCategory[rec.category] = (byCategory[rec.category] || 0) + rec.value;
     });
 
-    // Format Bar Data
-    let barData: any[] = [];
-    if (isSpecificYear) {
-        // If specific year, force all 12 months (01-12)
-        for (let i = 1; i <= 12; i++) {
-            const m = i < 10 ? `0${i}` : `${i}`;
-            const key = `${filterYear}-${m}`;
-            if (byMonth[key]) {
-                barData.push(byMonth[key]);
-            } else {
-                barData.push({ date: key }); // Empty month
-            }
-        }
-    } else {
-        // Show all months present in data sorted
-        const sortedMonths = Object.keys(byMonth).sort();
-        barData = sortedMonths.map(m => byMonth[m]);
-    }
+    // Format Bar Data (Sorted by date)
+    const sortedMonths = Object.keys(byMonth).sort();
+    const barData = sortedMonths.map(m => byMonth[m]);
     
     // Format Pie Data
     const pieDataList = Object.keys(byCategory).map(cat => ({
@@ -108,34 +97,20 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
     })).sort((a, b) => b.value - a.value);
 
     // Calculate Monthly Avg
-    let divisor = 1;
-    if (filterYear === 'All') {
-        divisor = Object.keys(byMonth).length || 1; // Avg over active months
-    } else {
-        if (filterYear === currentYearStr) {
-            // For current year, avg over elapsed months
-            const currentMonth = new Date().getMonth() + 1; // 1-12
-            divisor = currentMonth;
-        } else {
-            // Past year: always divide by 12
-            divisor = 12;
-        }
-    }
+    // If range is selected, divide by active months in range, or 1
+    const divisor = Object.keys(byMonth).length || 1; 
     const monthlyAvg = totalFiltered / divisor;
 
     return {
-      years: Array.from(uniqueYears).sort().reverse(),
-      availableCategories: Array.from(uniqueCategories).sort(),
       chartData: barData,
       pieData: pieDataList,
       kpi: {
         total: totalFiltered,
-        ytd: totalYTD,
         monthlyAvg,
         transactionCount: countInFiltered
       }
     };
-  }, [incomeRecords, filterYear, filterCategory]);
+  }, [incomeRecords, filterMember, filterCategory, filterStartDate, filterEndDate]);
 
   // Extract keys for stacking bars
   const barKeys = useMemo(() => {
@@ -148,49 +123,73 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
     return Array.from(keys);
   }, [chartData]);
 
-  // Determine what to show in the second KPI card
-  const currentYearStr = new Date().getFullYear().toString();
-  const showYTD = filterYear === 'All' || filterYear === currentYearStr;
+  // Auto-reset filters if options disappear
+  useEffect(() => {
+     if (filterCategory !== 'All' && !usedCategories.includes(filterCategory)) setFilterCategory('All');
+     if (filterMember !== 'All' && !usedMembers.includes(filterMember)) setFilterMember('All');
+  }, [usedCategories, usedMembers, filterCategory, filterMember]);
 
   return (
     <div className="space-y-6 animate-fade-in">
       
-      {/* Filters */}
+      {/* Filters (Unified with Dashboard) */}
       <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center gap-4 transition-colors">
         
-        {/* Year Filter */}
+        {/* Family Member */}
         <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Year:</span>
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.familyMember}:</span>
             <select 
-            value={filterYear}
-            onChange={(e) => setFilterYear(e.target.value)}
-            className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+                value={filterMember} 
+                onChange={(e) => setFilterMember(e.target.value)}
+                className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
             >
-            <option value="All">All Time</option>
-            {years.map(y => (
-                <option key={y} value={y}>{y}</option>
-            ))}
+                <option value="All">{t.allFamily}</option>
+                {usedMembers.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
         </div>
 
-        {/* Category Filter */}
+        {/* Category */}
         <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{t.category}:</span>
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.category}:</span>
             <select 
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+                value={filterCategory} 
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
             >
-            <option value="All">All</option>
-            {availableCategories.map(c => (
-                <option key={c} value={c}>{c}</option>
-            ))}
+                <option value="All">All</option>
+                {usedCategories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
         </div>
 
-        {(filterYear !== 'All' || filterCategory !== 'All') && (
+        {/* Date Range: From */}
+        <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.from}:</span>
+            <select 
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="">--</option>
+              {usedMonths.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+        </div>
+
+        {/* Date Range: To */}
+        <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.to}:</span>
+            <select 
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="">--</option>
+              {usedMonths.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+        </div>
+
+        {(filterStartDate || filterEndDate || filterCategory !== 'All' || filterMember !== 'All') && (
             <button 
-                onClick={() => { setFilterYear('All'); setFilterCategory('All'); }}
+                onClick={() => { setFilterStartDate(''); setFilterEndDate(''); setFilterCategory('All'); setFilterMember('All'); }}
                 className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 title="Clear Filters"
             >
@@ -203,7 +202,7 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-100 dark:border-emerald-800">
           <div className="text-emerald-800 dark:text-emerald-300">
-            <h3 className="text-sm font-semibold uppercase tracking-wider mb-1">{filterYear === 'All' ? t.totalIncome : `Total Income (${filterYear})`}</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider mb-1">{t.totalIncome}</h3>
             <p className="text-3xl font-bold font-mono">${kpi.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </div>
         </Card>
@@ -211,10 +210,10 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
         <Card>
           <div className="text-slate-800 dark:text-slate-200">
             <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                {showYTD ? `${t.ytdIncome} (Current)` : 'Transactions'}
+                Transactions
             </h3>
             <p className="text-3xl font-bold font-mono">
-                {showYTD ? `$${kpi.ytd.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : kpi.transactionCount}
+                {kpi.transactionCount}
             </p>
           </div>
         </Card>
@@ -284,6 +283,7 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
             <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs uppercase font-semibold text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-4 py-3">{t.date}</th>
+                <th className="px-4 py-3">{t.familyMember}</th>
                 <th className="px-4 py-3">{t.category}</th>
                 <th className="px-4 py-3">{t.source}</th>
                 <th className="px-4 py-3 text-right">{t.value}</th>
@@ -291,13 +291,17 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {[...incomeRecords]
-                .filter(rec => filterYear === 'All' || rec.date.startsWith(filterYear))
+                 // Apply filters here for table too
+                .filter(rec => filterMember === 'All' || rec.familyMember === filterMember)
                 .filter(rec => filterCategory === 'All' || rec.category === filterCategory)
+                .filter(rec => !filterStartDate || rec.date >= `${filterStartDate}-01`)
+                .filter(rec => !filterEndDate || rec.date <= `${filterEndDate}-31`)
                 .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                 .slice(0, 10) // Show last 10
                 .map(rec => (
                 <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                   <td className="px-4 py-3 whitespace-nowrap">{rec.date}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{rec.familyMember || '-'}</td>
                   <td className="px-4 py-3">
                     <span className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs" style={{ color: getCategoryColor(rec.category), backgroundColor: getCategoryColor(rec.category) + '20' }}>
                       {rec.category}
@@ -311,7 +315,7 @@ export const InvestmentIncomeView: React.FC<InvestmentIncomeViewProps> = ({ inco
               ))}
               {incomeRecords.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
                     {t.noRecords}
                   </td>
                 </tr>

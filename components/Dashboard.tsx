@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  BarChart, Bar, Legend, PieChart, Pie, Cell, Sector
+  BarChart, Bar, Legend, PieChart, Pie, Cell, Sector, ReferenceLine
 } from 'recharts';
 import { Snapshot, Language } from '../types';
 import { Card } from './ui/Card';
@@ -43,8 +43,8 @@ const getCategoryColor = (category: string) => {
 
 // Custom static label for Pie Chart
 const renderCustomLabel = (props: any) => {
+  const { cx, cy, midAngle, innerRadius, outerRadius, percent, value, name, payload } = props;
   const RADIAN = Math.PI / 180;
-  const { cx, cy, midAngle, innerRadius, outerRadius, percent, value, name } = props;
   const radius = outerRadius * 1.2;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
@@ -52,9 +52,12 @@ const renderCustomLabel = (props: any) => {
   // Calculate text anchor based on position
   const textAnchor = x > cx ? 'start' : 'end';
 
+  // Use the original (potentially negative) value for display if available
+  const displayValue = payload.originalValue !== undefined ? payload.originalValue : value;
+
   return (
     <text x={x} y={y} fill="#64748b" textAnchor={textAnchor} dominantBaseline="central" className="text-xs font-medium dark:fill-slate-300">
-      {`${name}: ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${(percent * 100).toFixed(1)}%)`}
+      {`${name}: ${displayValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${(percent * 100).toFixed(1)}%)`}
     </text>
   );
 };
@@ -67,8 +70,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   
-  // State for Pie Chart Hover (kept for interaction, though labels are static now)
-  const [activeIndex, setActiveIndex] = useState(0);
+  // State for Pie Chart Hover
+  const [activeIndexAsset, setActiveIndexAsset] = useState(0);
+  const [activeIndexLiab, setActiveIndexLiab] = useState(0);
 
   const t = translations[language];
 
@@ -95,7 +99,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
     };
   }, [snapshots]);
 
-  // 1. Prepare Time Series Data with Currency Normalization AND Date Filtering (Area Chart)
+  // 1. Prepare Time Series Data (Area/Bar Chart)
   const chartData = useMemo(() => {
     const groupedByDate: Record<string, any> = {};
 
@@ -128,7 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
     );
   }, [snapshots, filterCategory, filterMember, filterStartDate, filterEndDate]);
 
-  // 2. Prepare Detailed Pie Chart Data (Based on the LAST snapshot set in the filtered range)
+  // 2. Prepare Detailed Pie Chart Data (Split Assets & Liabilities)
   const pieDataInfo = useMemo(() => {
     // A. Filter Snapshots by Date Range & Member first
     let relevantSnapshots = snapshots.filter(s => {
@@ -138,7 +142,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
       return true;
     });
 
-    if (relevantSnapshots.length === 0) return { data: [], date: null };
+    if (relevantSnapshots.length === 0) return { assets: [], liabilities: [], date: null };
 
     // B. Find the latest date
     const sortedDates = relevantSnapshots.map(s => s.date).sort();
@@ -154,26 +158,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
     const aggByName: Record<string, number> = {};
     latestItems.forEach(item => {
       const rate = RATES[item.currency?.toUpperCase()] || 1;
-      // Use Item Name for granularity, fallback to category if name is empty
       const name = item.name.trim() || item.category;
       aggByName[name] = (aggByName[name] || 0) + (item.value * rate);
     });
 
-    // E. Convert to array and Sort
-    let data = Object.keys(aggByName).map(key => ({
+    // E. Separate into Assets (>0) and Liabilities (<0)
+    const rawData = Object.keys(aggByName).map(key => ({
       name: key,
       value: aggByName[key]
-    })).sort((a, b) => b.value - a.value);
+    }));
 
-    // F. Optimization: Group small items if list is too long (Top 10 + Others)
-    if (data.length > 10) {
-      const top10 = data.slice(0, 10);
-      const others = data.slice(10);
+    // Assets: Positive values, sorted high to low
+    let assets = rawData
+      .filter(d => d.value > 0)
+      .map(d => ({ ...d, originalValue: d.value }))
+      .sort((a, b) => b.value - a.value);
+
+    // Liabilities: Negative values, sorted by magnitude (most debt first)
+    // We convert value to absolute for the Pie Chart slice calculation, but keep originalValue for display
+    let liabilities = rawData
+      .filter(d => d.value < 0)
+      .map(d => ({ 
+        name: d.name, 
+        value: Math.abs(d.value), 
+        originalValue: d.value 
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    // F. Optimization: Group small items (Top 10 + Others) for Assets
+    if (assets.length > 10) {
+      const top10 = assets.slice(0, 10);
+      const others = assets.slice(10);
       const otherTotal = others.reduce((sum, item) => sum + item.value, 0);
-      data = [...top10, { name: 'Others', value: otherTotal }];
+      assets = [...top10, { name: 'Others', value: otherTotal, originalValue: otherTotal }];
+    }
+    // Optimization for Liabilities
+    if (liabilities.length > 10) {
+        const top10 = liabilities.slice(0, 10);
+        const others = liabilities.slice(10);
+        const otherTotalAbs = others.reduce((sum, item) => sum + item.value, 0);
+        const otherTotalOrig = others.reduce((sum, item) => sum + item.originalValue, 0);
+        liabilities = [...top10, { name: 'Others', value: otherTotalAbs, originalValue: otherTotalOrig }];
     }
 
-    return { data, date: latestDate };
+    return { assets, liabilities, date: latestDate };
   }, [snapshots, filterCategory, filterMember, filterStartDate, filterEndDate]);
 
   // Keys for Bar Chart
@@ -188,11 +216,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
     return Array.from(allKeys);
   }, [chartData]);
 
-  const onPieEnter = (_: any, index: number) => {
-    setActiveIndex(index);
-  };
-
-  // Auto-reset filters if they no longer exist
+  // Auto-reset filters
   useEffect(() => {
     if (filterCategory !== 'All' && !usedCategories.includes(filterCategory)) setFilterCategory('All');
     if (filterMember !== 'All' && !usedMembers.includes(filterMember)) setFilterMember('All');
@@ -244,7 +268,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
                 </select>
             </div>
 
-            {/* Date Range: From */}
+            {/* Date Range */}
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.from}:</span>
                 <select 
@@ -257,7 +281,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
                 </select>
             </div>
 
-            {/* Date Range: To */}
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.to}:</span>
                 <select 
@@ -282,7 +305,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
 
             <div className="flex-1 hidden xl:block"></div>
 
-            {/* Analyze Button */}
             <Button onClick={handleAnalyze} isLoading={isAnalyzing} variant="primary" className="bg-indigo-600 hover:bg-indigo-700 w-full md:w-auto ml-auto md:ml-0">
                ✨ {t.analyze}
             </Button>
@@ -334,41 +356,76 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Pie Chart: Detailed Item Breakdown */}
-        <Card title={t.assetBreakdown}>
-           {/* Chart Container */}
-           <div className="h-[450px] w-full flex items-center justify-center relative">
+        <Card title={t.assetBreakdown} className="flex flex-col">
+           {/* Date Indicator */}
+           {pieDataInfo.date && (
+               <div className="mb-2 self-start bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded text-sm font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600">
+                 {pieDataInfo.date}
+               </div>
+           )}
+
+           <div className={`flex-1 w-full grid gap-4 ${pieDataInfo.assets.length > 0 && pieDataInfo.liabilities.length > 0 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
              
-             {/* Date Indicator in top-left of chart area */}
-             {pieDataInfo.date && (
-                <div className="absolute top-2 left-2 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded text-sm font-semibold text-slate-700 dark:text-slate-200 z-10 shadow-sm border border-slate-200 dark:border-slate-600">
-                  {pieDataInfo.date}
-                </div>
+             {/* Assets Pie */}
+             {pieDataInfo.assets.length > 0 && (
+               <div className="h-[350px] relative">
+                  <h4 className="text-center font-semibold text-emerald-600 dark:text-emerald-400 mb-2">Assets</h4>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                      <Pie
+                        activeIndex={activeIndexAsset}
+                        data={pieDataInfo.assets}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={0}
+                        outerRadius={90}
+                        dataKey="value"
+                        onMouseEnter={(_, idx) => setActiveIndexAsset(idx)}
+                        paddingAngle={2}
+                        label={renderCustomLabel}
+                        labelLine={true}
+                      >
+                        {pieDataInfo.assets.map((entry, index) => (
+                          <Cell key={`cell-a-${index}`} fill={getCategoryColor(entry.name)} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+               </div>
              )}
 
-             {pieDataInfo.data.length > 0 ? (
-               <ResponsiveContainer width="100%" height="100%">
-                 <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                    <Pie
-                      activeIndex={activeIndex}
-                      data={pieDataInfo.data}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={100}
-                      dataKey="value"
-                      onMouseEnter={onPieEnter}
-                      paddingAngle={2}
-                      label={renderCustomLabel}
-                      labelLine={true}
-                    >
-                      {pieDataInfo.data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name)} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-                      ))}
-                    </Pie>
-                 </PieChart>
-               </ResponsiveContainer>
-             ) : (
-               <p className="text-slate-400 text-sm">No data available for chart</p>
+             {/* Liabilities Pie */}
+             {pieDataInfo.liabilities.length > 0 && (
+               <div className="h-[350px] relative">
+                  <h4 className="text-center font-semibold text-red-600 dark:text-red-400 mb-2">Liabilities</h4>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                      <Pie
+                        activeIndex={activeIndexLiab}
+                        data={pieDataInfo.liabilities}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={0}
+                        outerRadius={90}
+                        dataKey="value"
+                        onMouseEnter={(_, idx) => setActiveIndexLiab(idx)}
+                        paddingAngle={2}
+                        label={renderCustomLabel}
+                        labelLine={true}
+                      >
+                        {pieDataInfo.liabilities.map((entry, index) => (
+                          <Cell key={`cell-l-${index}`} fill={getCategoryColor(entry.name)} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+               </div>
+             )}
+             
+             {pieDataInfo.assets.length === 0 && pieDataInfo.liabilities.length === 0 && (
+               <div className="h-[200px] flex items-center justify-center text-slate-400 text-sm">
+                 No data to display for this period.
+               </div>
              )}
            </div>
         </Card>
@@ -377,12 +434,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
         <Card title={t.assetAllocation}>
             <div className="h-[450px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
+                    <BarChart data={chartData} stackOffset="sign">
                         <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.5} />
                         <XAxis dataKey="date" fontSize={10} stroke="#64748b" />
                         <YAxis fontSize={10} tickFormatter={(val) => `${val/1000}k`} stroke="#64748b" />
                         <Tooltip formatter={(value: number) => `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                         <Legend wrapperStyle={{ fontSize: '10px' }} />
+                        <ReferenceLine y={0} stroke="#000" strokeWidth={2} />
                         {dataKeys.slice(0, 10).map((key, index) => (
                             <Bar key={key} dataKey={key} stackId="a" fill={getCategoryColor(key)} />
                         ))}
@@ -400,17 +458,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
                            const lastDate = chartData[chartData.length - 1]?.date;
                            if (!lastDate) return <p className="text-slate-400 p-4">No data in selected range</p>;
 
-                           const latestItems = snapshots
+                           // Get all items
+                           const allItems = snapshots
                               .filter(s => s.date === lastDate && (filterMember === 'All' || s.familyMember === filterMember))
                               .flatMap(s => s.items)
-                              .filter(i => filterCategory === 'All' || i.category === filterCategory)
-                              .sort((a,b) => b.value - a.value);
+                              .filter(i => filterCategory === 'All' || i.category === filterCategory);
+                           
+                           // Split into Assets and Liabilities
+                           const positiveItems = allItems.filter(i => i.value > 0).sort((a,b) => b.value - a.value);
+                           const negativeItems = allItems.filter(i => i.value < 0).sort((a,b) => a.value - b.value); // Sort most debt to least debt (ascending)
 
                            // Calculate Subtotal (Normalized to USD for consistent summation)
-                           const subTotalNormalized = latestItems.reduce((acc, item) => {
+                           const subTotalNormalized = allItems.reduce((acc, item) => {
                              const rate = RATES[item.currency?.toUpperCase()] || 1;
                              return acc + (item.value * rate);
                            }, 0);
+                           
+                           const renderItemRow = (item: any, idx: string | number) => (
+                               <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-700/50 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-100 dark:border-slate-700">
+                                   <div className="flex items-center gap-2 overflow-hidden">
+                                       <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getCategoryColor(item.category) }}></div>
+                                       <div className="flex flex-col min-w-0">
+                                          <span className="text-sm text-slate-700 dark:text-slate-200 font-medium truncate" title={item.name}>{item.name}</span>
+                                          <span className="text-[10px] text-slate-400 uppercase">{item.category}</span>
+                                       </div>
+                                   </div>
+                                   <span className={`text-sm font-mono whitespace-nowrap ml-2 ${item.value < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                                     {item.value.toLocaleString()} <span className="text-[10px] text-slate-500">{item.currency}</span>
+                                   </span>
+                               </div>
+                           );
 
                            return (
                              <>
@@ -419,29 +496,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
                                      Snapshot Date: <span className="text-slate-800 dark:text-slate-200 font-bold">{lastDate}</span>
                                   </div>
                                   <div className="text-right">
-                                     <span className="text-xs text-slate-400 uppercase tracking-wide">Sub Total (Approx USD)</span>
-                                     <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                                     <span className="text-xs text-slate-400 uppercase tracking-wide">Net Worth (Approx USD)</span>
+                                     <div className={`text-xl font-bold font-mono ${subTotalNormalized >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                                        ${subTotalNormalized.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                      </div>
                                   </div>
                                </div>
 
-                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                 {latestItems.map((item, idx) => (
-                                   <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-700/50 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-100 dark:border-slate-700">
-                                       <div className="flex items-center gap-2 overflow-hidden">
-                                           <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getCategoryColor(item.category) }}></div>
-                                           <div className="flex flex-col min-w-0">
-                                              <span className="text-sm text-slate-700 dark:text-slate-200 font-medium truncate" title={item.name}>{item.name}</span>
-                                              <span className="text-[10px] text-slate-400 uppercase">{item.category}</span>
-                                           </div>
-                                       </div>
-                                       <span className="text-sm font-mono text-slate-700 dark:text-slate-200 whitespace-nowrap ml-2">
-                                         {item.value.toLocaleString()} <span className="text-[10px] text-slate-500">{item.currency}</span>
-                                       </span>
+                               {/* Assets Section */}
+                               {positiveItems.length > 0 && (
+                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                       {positiveItems.map((item, idx) => renderItemRow(item, `pos-${idx}`))}
                                    </div>
-                                 ))}
-                               </div>
+                               )}
+
+                               {/* Divider if both exist */}
+                               {positiveItems.length > 0 && negativeItems.length > 0 && (
+                                   <div className="py-4 flex items-center gap-4">
+                                       <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+                                       <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Liabilities</span>
+                                       <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+                                   </div>
+                               )}
+
+                               {/* Liabilities Section */}
+                               {negativeItems.length > 0 && (
+                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                       {negativeItems.map((item, idx) => renderItemRow(item, `neg-${idx}`))}
+                                   </div>
+                               )}
                              </>
                            );
                          })()}

@@ -1,4 +1,6 @@
 
+
+
 import { Language } from '../types';
 
 type Translations = {
@@ -57,8 +59,11 @@ export const translations: Translations = {
     delete: "Delete",
     noRecords: "No records found matching your filter.",
     filterPlaceholder: "Filter by name, category, member or date...",
+    viewType: "View Type",
+    individualRecord: "Individual Record",
+    masterTable: "Master Table",
 
-    // Master Database
+    // Master Database (Now Integrated)
     masterDbDesc: "A pivot-table view of your assets over time.",
     subTotal: "Sub Total",
     normalizedNote: "Values are normalized to approx. USD for aggregation.",
@@ -119,7 +124,7 @@ export const translations: Translations = {
     
     // Data Management
     dataBackup: "Data Backup",
-    backupDesc: "Export your data to safeguard against updates or to move to another device.",
+    backupDesc: "Import data in bulk, backup your history, or manage demo data.",
     downloadCSV: "Download CSV (Assets & Income)",
     dangerZone: "Danger Zone",
     irriversible: "Irreversible actions regarding your data.",
@@ -195,8 +200,11 @@ export const translations: Translations = {
     delete: "删除",
     noRecords: "未找到匹配记录。",
     filterPlaceholder: "搜索名称、类别、成员或日期...",
+    viewType: "视图类型",
+    individualRecord: "单条记录",
+    masterTable: "总表视图",
 
-    // Master Database
+    // Master Database (Integrated)
     masterDbDesc: "资产随时间变化的透视表视图。",
     subTotal: "小计",
     normalizedNote: "数值已折算为约合美元以便汇总。",
@@ -257,7 +265,7 @@ export const translations: Translations = {
 
     // Data Management
     dataBackup: "数据备份",
-    backupDesc: "导出数据以防丢失，或迁移至其他设备。",
+    backupDesc: "批量导入数据，备份历史记录，或管理演示数据。",
     downloadCSV: "下载 CSV (资产与收入)",
     dangerZone: "危险区域",
     irriversible: "此操作不可逆，请谨慎。",

@@ -63,7 +63,7 @@ const ListEditor: React.FC<{
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-6 transition-colors">
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-6 transition-colors animate-fade-in">
       <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">{title}</h3>
       {warning && (
         <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded border border-amber-100 dark:border-amber-800/50 mb-4 inline-block">
@@ -132,6 +132,7 @@ const ListEditor: React.FC<{
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = (props) => {
+  const [activeTab, setActiveTab] = useState<'assets' | 'income' | 'family'>('assets');
   const t = translations[props.language];
 
   return (
@@ -190,38 +191,66 @@ export const SettingsView: React.FC<SettingsViewProps> = (props) => {
       <div>
         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4 px-1">{t.tagControl}</h2>
         
-        <ListEditor
-          title={t.assetCategories}
-          items={props.categories}
-          onAdd={props.onAddCategory}
-          onRename={props.onRenameCategory}
-          onDelete={props.onDeleteCategory}
-          placeholder={t.newCategoryPlaceholder}
-          warning={t.renameWarning}
-          lang={props.language}
-        />
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+          <button 
+            onClick={() => setActiveTab('assets')} 
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'assets' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+          >
+            {t.assetCategories}
+          </button>
+          <button 
+            onClick={() => setActiveTab('income')} 
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'income' ? 'bg-emerald-600 text-white shadow' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+          >
+            {t.incomeCategories}
+          </button>
+          <button 
+            onClick={() => setActiveTab('family')} 
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'family' ? 'bg-indigo-600 text-white shadow' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+          >
+            {t.familyMembers}
+          </button>
+        </div>
 
-        <ListEditor
-          title={t.incomeCategories}
-          items={props.incomeCategories}
-          onAdd={props.onAddIncomeCategory}
-          onRename={props.onRenameIncomeCategory}
-          onDelete={props.onDeleteIncomeCategory}
-          placeholder={t.newCategoryPlaceholder}
-          warning={t.renameWarning}
-          lang={props.language}
-        />
+        {activeTab === 'assets' && (
+          <ListEditor
+            title={t.assetCategories}
+            items={props.categories}
+            onAdd={props.onAddCategory}
+            onRename={props.onRenameCategory}
+            onDelete={props.onDeleteCategory}
+            placeholder={t.newCategoryPlaceholder}
+            warning={t.renameWarning}
+            lang={props.language}
+          />
+        )}
+
+        {activeTab === 'income' && (
+          <ListEditor
+            title={t.incomeCategories}
+            items={props.incomeCategories}
+            onAdd={props.onAddIncomeCategory}
+            onRename={props.onRenameIncomeCategory}
+            onDelete={props.onDeleteIncomeCategory}
+            placeholder={t.newCategoryPlaceholder}
+            warning={t.renameWarning}
+            lang={props.language}
+          />
+        )}
         
-        <ListEditor
-          title={t.familyMembers}
-          items={props.familyMembers}
-          onAdd={props.onAddMember}
-          onRename={props.onRenameMember}
-          onDelete={props.onDeleteMember}
-          placeholder={t.newMemberPlaceholder}
-          warning={t.renameWarning}
-          lang={props.language}
-        />
+        {activeTab === 'family' && (
+          <ListEditor
+            title={t.familyMembers}
+            items={props.familyMembers}
+            onAdd={props.onAddMember}
+            onRename={props.onRenameMember}
+            onDelete={props.onDeleteMember}
+            placeholder={t.newMemberPlaceholder}
+            warning={t.renameWarning}
+            lang={props.language}
+          />
+        )}
       </div>
     </div>
   );

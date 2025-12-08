@@ -1,4 +1,7 @@
 
+
+
+
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Dashboard } from './components/Dashboard';
@@ -6,9 +9,7 @@ import { HistoryView } from './components/HistoryView';
 import { SnapshotForm } from './components/SnapshotForm';
 import { IncomeForm } from './components/IncomeForm';
 import { SettingsView } from './components/SettingsView';
-import { BulkEntryView, BulkImportItem } from './components/BulkEntryView';
-import { DataManagementView } from './components/DataManagementView';
-import { MasterDatabaseView } from './components/MasterDatabaseView';
+import { DataManagementView, BulkImportItem } from './components/DataManagementView';
 import { Snapshot, ViewMode, AssetItem, Language, Theme, IncomeRecord } from './types';
 import { Button } from './components/ui/Button';
 import { translations } from './utils/translations';
@@ -408,16 +409,6 @@ const App: React.FC = () => {
             {t.history}
           </button>
 
-          <button onClick={() => handleNavClick('masterDatabase')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'masterDatabase' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-            {t.masterDatabase}
-          </button>
-
-          <button onClick={() => handleNavClick('bulk')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'bulk' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            {t.bulkImport}
-          </button>
-
           <button onClick={() => handleNavClick('dataManagement')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'dataManagement' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
             {t.dataManagement}
@@ -460,8 +451,6 @@ const App: React.FC = () => {
               <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
                 {isFormOpen ? (editingSnapshot ? t.editSnapshot : t.newRecord) : (
                   view === 'history' ? t.assetHistory : 
-                  view === 'masterDatabase' ? t.masterDatabase : 
-                  view === 'bulk' ? t.bulkDataImport : 
                   view === 'dataManagement' ? t.dataManagement :
                   t.settings
                 )}
@@ -469,8 +458,6 @@ const App: React.FC = () => {
               <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                  {isFormOpen ? t.formDesc : (
                    view === 'history' ? 'View and manage your historical records.' :
-                   view === 'masterDatabase' ? t.masterDbDesc :
-                   view === 'bulk' ? t.bulkDesc :
                    view === 'dataManagement' ? t.backupDesc :
                    'Configure your asset categories and family members.'
                  )}
@@ -544,15 +531,6 @@ const App: React.FC = () => {
                 language={language}
               />
             )}
-             {view === 'masterDatabase' && (
-              <MasterDatabaseView 
-                snapshots={snapshots} 
-                incomeRecords={incomeRecords}
-                availableCategories={categories}
-                familyMembers={familyMembers}
-                language={language}
-              />
-            )}
             {view === 'settings' && (
               <SettingsView 
                 categories={categories}
@@ -573,19 +551,14 @@ const App: React.FC = () => {
                 onSetLanguage={handleSetLanguage}
               />
             )}
-             {view === 'bulk' && (
-              <BulkEntryView 
-                categories={categories}
-                familyMembers={familyMembers}
-                onImport={handleBulkImport}
-                onImportIncome={handleImportIncome}
-                language={language}
-              />
-            )}
             {view === 'dataManagement' && (
               <DataManagementView 
                 snapshots={snapshots}
                 incomeRecords={incomeRecords}
+                categories={categories}
+                familyMembers={familyMembers}
+                onImport={handleBulkImport}
+                onImportIncome={handleImportIncome}
                 onClearAllData={handleClearAllData}
                 onGenerateDemoData={handleGenerateDemoData}
                 language={language}

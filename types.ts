@@ -43,7 +43,7 @@ export interface ChartDataPoint {
   [key: string]: number | string; // Dynamic keys for breakdown
 }
 
-export type ViewMode = 'dashboard' | 'history' | 'masterDatabase' | 'stockMarket' | 'analysis' | 'settings' | 'bulk' | 'dataManagement';
+export type ViewMode = 'dashboard' | 'history' | 'analysis' | 'settings' | 'dataManagement';
 
 export type Language = 'en' | 'zh';
 export type Theme = 'light' | 'dark';

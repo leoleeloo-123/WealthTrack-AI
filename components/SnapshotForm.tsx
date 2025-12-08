@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Snapshot, AssetItem, Language } from '../types';
@@ -70,36 +71,43 @@ export const SnapshotForm: React.FC<SnapshotFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-100 dark:border-slate-700 transition-colors">
-        <div>
-          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t.date}</label>
-          <input 
-            type="date" 
-            required
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className={inputStyle}
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t.familyMember}</label>
-          <select
-            value={familyMember}
-            onChange={(e) => setFamilyMember(e.target.value)}
-            className={inputStyle}
-          >
-            {familyMembers.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-        </div>
-        <div>
-           <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t.note}</label>
-           <input 
-            type="text" 
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={t.notePlaceholder}
-            className={inputStyle}
-           />
+      {/* Header Section - Blue Theme to match Income's Green Theme */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800 transition-colors">
+        <h3 className="text-blue-800 dark:text-blue-300 font-bold mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            {existingSnapshot ? t.editSnapshot : t.newSnapshot}
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">{t.date}</label>
+            <input 
+              type="date" 
+              required
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className={inputStyle}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">{t.familyMember}</label>
+            <select
+              value={familyMember}
+              onChange={(e) => setFamilyMember(e.target.value)}
+              className={inputStyle}
+            >
+              {familyMembers.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+             <label className="block text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">{t.note}</label>
+             <input 
+              type="text" 
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t.notePlaceholder}
+              className={inputStyle}
+             />
+          </div>
         </div>
       </div>
 
@@ -107,7 +115,7 @@ export const SnapshotForm: React.FC<SnapshotFormProps> = ({
         <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-2">
           <h4 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{t.assetItems}</h4>
           <span className="text-sm text-slate-500 dark:text-slate-400">
-            {t.rawTotal}: {items.reduce((acc, curr) => acc + Number(curr.value || 0), 0).toLocaleString()} (Mixed)
+            {t.total}: {items.reduce((acc, curr) => acc + Number(curr.value || 0), 0).toLocaleString()}
           </span>
         </div>
         

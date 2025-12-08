@@ -9,7 +9,6 @@ import { SettingsView } from './components/SettingsView';
 import { BulkEntryView, BulkImportItem } from './components/BulkEntryView';
 import { DataManagementView } from './components/DataManagementView';
 import { MasterDatabaseView } from './components/MasterDatabaseView';
-import { InvestmentIncomeView } from './components/InvestmentIncomeView';
 import { Snapshot, ViewMode, AssetItem, Language, Theme, IncomeRecord } from './types';
 import { Button } from './components/ui/Button';
 import { translations } from './utils/translations';
@@ -254,8 +253,9 @@ const App: React.FC = () => {
   const handleSaveIncome = (records: IncomeRecord[]) => {
     setIncomeRecords(prev => [...prev, ...records]);
     setIsFormOpen(false);
-    // Optionally switch view to verify
-    if (view !== 'investmentIncome') setView('investmentIncome');
+    // Switch to dashboard and set logic to view income if possible, 
+    // but simple setView('dashboard') is enough as user can toggle view there.
+    setView('dashboard');
   };
 
   const handleDeleteSnapshot = (id: string) => { setSnapshots(prev => prev.filter(s => s.id !== id)); };
@@ -364,7 +364,7 @@ const App: React.FC = () => {
     const existingSignatures = new Set(incomeRecords.map(r => `${r.date}-${r.category}-${r.name}-${r.value}-${r.familyMember}`));
     const newItems = items.filter(r => !existingSignatures.has(`${r.date}-${r.category}-${r.name}-${r.value}-${r.familyMember}`));
     setIncomeRecords([...incomeRecords, ...newItems]);
-    setView('investmentIncome');
+    setView('dashboard');
   };
 
   return (
@@ -409,11 +409,6 @@ const App: React.FC = () => {
             {t.masterDatabase}
           </button>
 
-          <button onClick={() => handleNavClick('investmentIncome')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'investmentIncome' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-            {t.investmentIncome}
-          </button>
-
           <button onClick={() => handleNavClick('bulk')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${view === 'bulk' && !isFormOpen ? 'bg-secondary dark:bg-slate-800 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             {t.bulkImport}
@@ -454,32 +449,31 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <header className="mb-8 flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-              {isFormOpen ? (editingSnapshot ? t.editSnapshot : t.newRecord) : (
-                view === 'dashboard' ? t.overview : 
-                view === 'history' ? t.assetHistory : 
-                view === 'masterDatabase' ? t.masterDatabase : 
-                view === 'investmentIncome' ? t.investmentIncome :
-                view === 'bulk' ? t.bulkDataImport : 
-                view === 'dataManagement' ? t.dataManagement :
-                t.settings
-              )}
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-               {isFormOpen ? t.formDesc : (
-                 view === 'dashboard' ? 'Track, analyze, and optimize your wealth.' :
-                 view === 'history' ? 'View and manage your historical records.' :
-                 view === 'masterDatabase' ? t.masterDbDesc :
-                 view === 'investmentIncome' ? t.incomeDesc :
-                 view === 'bulk' ? t.bulkDesc :
-                 view === 'dataManagement' ? t.backupDesc :
-                 'Configure your asset categories and family members.'
-               )}
-            </p>
-          </div>
-        </header>
+        {/* Dynamic Header - Hide for Dashboard as it has its own logic now, show for others */}
+        {view !== 'dashboard' && (
+          <header className="mb-8 flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {isFormOpen ? (editingSnapshot ? t.editSnapshot : t.newRecord) : (
+                  view === 'history' ? t.assetHistory : 
+                  view === 'masterDatabase' ? t.masterDatabase : 
+                  view === 'bulk' ? t.bulkDataImport : 
+                  view === 'dataManagement' ? t.dataManagement :
+                  t.settings
+                )}
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                 {isFormOpen ? t.formDesc : (
+                   view === 'history' ? 'View and manage your historical records.' :
+                   view === 'masterDatabase' ? t.masterDbDesc :
+                   view === 'bulk' ? t.bulkDesc :
+                   view === 'dataManagement' ? t.backupDesc :
+                   'Configure your asset categories and family members.'
+                 )}
+              </p>
+            </div>
+          </header>
+        )}
 
         {isFormOpen ? (
           <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 transition-colors">
@@ -528,6 +522,7 @@ const App: React.FC = () => {
             {view === 'dashboard' && (
               <Dashboard 
                 snapshots={snapshots} 
+                incomeRecords={incomeRecords}
                 availableCategories={categories} 
                 familyMembers={familyMembers}
                 language={language}
@@ -551,12 +546,6 @@ const App: React.FC = () => {
                 incomeRecords={incomeRecords}
                 availableCategories={categories}
                 familyMembers={familyMembers}
-                language={language}
-              />
-            )}
-            {view === 'investmentIncome' && (
-              <InvestmentIncomeView 
-                incomeRecords={incomeRecords}
                 language={language}
               />
             )}

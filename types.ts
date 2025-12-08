@@ -25,6 +25,7 @@ export interface IncomeRecord {
   value: number;
   familyMember: string; // Added for consistency
   currency: string;
+  note?: string; // Added for parity with Snapshot
 }
 
 export interface StockPosition {
@@ -42,7 +43,7 @@ export interface ChartDataPoint {
   [key: string]: number | string; // Dynamic keys for breakdown
 }
 
-export type ViewMode = 'dashboard' | 'history' | 'masterDatabase' | 'investmentIncome' | 'stockMarket' | 'analysis' | 'settings' | 'bulk' | 'dataManagement';
+export type ViewMode = 'dashboard' | 'history' | 'masterDatabase' | 'stockMarket' | 'analysis' | 'settings' | 'bulk' | 'dataManagement';
 
 export type Language = 'en' | 'zh';
 export type Theme = 'light' | 'dark';

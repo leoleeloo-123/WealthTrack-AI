@@ -24,6 +24,10 @@ export const translations: Translations = {
     appTitle: "WealthTrack",
     aiPowered: "AI POWERED",
     
+    // Dynamic Dashboard Titles
+    assetOverview: "Asset Snapshots Overview",
+    investmentIncomeOverview: "Investment Income Overview",
+    
     // Demo Mode
     demoMode: "DEMO MODE",
     demoModeDesc: "You are viewing sample data. Feel free to explore features.",
@@ -83,8 +87,8 @@ export const translations: Translations = {
     saveSnapshot: "Save Snapshot",
     cancel: "Cancel",
     newRecord: "New Record",
-    newSnapshot: "New Snapshot",
-    editSnapshot: "Edit Snapshot",
+    newSnapshot: "New Asset Record",
+    editSnapshot: "Edit Asset Record",
     formDesc: "Record your financial data.",
     namePlaceholder: "Name (e.g. Chase Checking)",
     
@@ -156,6 +160,10 @@ export const translations: Translations = {
     appTitle: "财富追踪",
     aiPowered: "AI 驱动",
 
+    // Dynamic Dashboard Titles
+    assetOverview: "资产快照概览",
+    investmentIncomeOverview: "投资收入概览",
+
     // Demo Mode
     demoMode: "演示模式",
     demoModeDesc: "您正在查看示例数据。请随意探索功能。",
@@ -215,8 +223,8 @@ export const translations: Translations = {
     saveSnapshot: "保存记录",
     cancel: "取消",
     newRecord: "新建记录",
-    newSnapshot: "新建记录",
-    editSnapshot: "编辑记录",
+    newSnapshot: "新建资产记录",
+    editSnapshot: "编辑资产记录",
     formDesc: "记录您的财务数据。",
     namePlaceholder: "名称 (例如：招商银行储蓄)",
 

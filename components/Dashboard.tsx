@@ -1,9 +1,10 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   BarChart, Bar, Legend, PieChart, Pie, Cell, Sector, ReferenceLine
 } from 'recharts';
-import { Snapshot, Language } from '../types';
+import { Snapshot, Language, IncomeRecord } from '../types';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { analyzeFinancialData } from '../services/geminiService';
@@ -11,6 +12,7 @@ import { translations } from '../utils/translations';
 
 interface DashboardProps {
   snapshots: Snapshot[];
+  incomeRecords: IncomeRecord[];
   availableCategories: string[];
   familyMembers: string[];
   language: Language;
@@ -62,7 +64,8 @@ const renderCustomLabel = (props: any) => {
   );
 };
 
-export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ snapshots, incomeRecords, language }) => {
+  const [dataSource, setDataSource] = useState<'assets' | 'income'>('assets');
   const [activeAnalysis, setActiveAnalysis] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('All');
@@ -76,38 +79,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
 
   const t = translations[language];
 
-  // 0. Derive Filter Options from Data (Only show what exists)
+  // 0. Derive Filter Options from Data (Only show what exists based on DataSource)
   const { usedMembers, usedCategories, usedMonths } = useMemo(() => {
     const members = new Set<string>();
     const cats = new Set<string>();
     const months = new Set<string>();
 
-    snapshots.forEach(s => {
-      if (s.familyMember) members.add(s.familyMember);
-      if (s.date) months.add(s.date.substring(0, 7)); // YYYY-MM
-      s.items.forEach(i => {
-        if (i.category && i.category.trim() !== '') {
-          cats.add(i.category);
-        }
+    if (dataSource === 'assets') {
+      snapshots.forEach(s => {
+        if (s.familyMember) members.add(s.familyMember);
+        if (s.date) months.add(s.date.substring(0, 7)); // YYYY-MM
+        s.items.forEach(i => {
+          if (i.category && i.category.trim() !== '') {
+            cats.add(i.category);
+          }
+        });
       });
-    });
+    } else {
+      incomeRecords.forEach(rec => {
+        if (rec.familyMember) members.add(rec.familyMember);
+        if (rec.date) months.add(rec.date.substring(0, 7));
+        if (rec.category) cats.add(rec.category);
+      });
+    }
 
     return {
       usedMembers: Array.from(members).sort(),
       usedCategories: Array.from(cats).sort(),
       usedMonths: Array.from(months).sort().reverse() // Newest first
     };
-  }, [snapshots]);
+  }, [snapshots, incomeRecords, dataSource]);
 
-  // 1. Prepare Time Series Data (Area/Bar Chart)
-  const chartData = useMemo(() => {
+  // ================= ASSET DATA LOGIC =================
+  const assetData = useMemo(() => {
+    if (dataSource !== 'assets') return { chartData: [], pieDataInfo: { assets: [], liabilities: [], date: null }, dataKeys: [] };
+
+    // 1. Prepare Time Series Data (Area/Bar Chart)
     const groupedByDate: Record<string, any> = {};
 
     snapshots.forEach(s => {
-      // Family Member Filter
       if (filterMember !== 'All' && s.familyMember !== filterMember) return;
-
-      // Date Range Filter (Format YYYY-MM)
       if (filterStartDate && s.date < `${filterStartDate}-01`) return;
       if (filterEndDate && s.date > `${filterEndDate}-31`) return;
 
@@ -127,14 +138,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
       });
     });
 
-    return Object.values(groupedByDate).sort((a: any, b: any) => 
+    const chartData = Object.values(groupedByDate).sort((a: any, b: any) => 
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-  }, [snapshots, filterCategory, filterMember, filterStartDate, filterEndDate]);
 
-  // 2. Prepare Detailed Pie Chart Data (Split Assets & Liabilities)
-  const pieDataInfo = useMemo(() => {
-    // A. Filter Snapshots by Date Range & Member first
+    // 2. Prepare Detailed Pie Chart Data (Split Assets & Liabilities)
     let relevantSnapshots = snapshots.filter(s => {
       if (filterMember !== 'All' && s.familyMember !== filterMember) return false;
       if (filterStartDate && s.date < `${filterStartDate}-01`) return false;
@@ -142,85 +150,130 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
       return true;
     });
 
-    if (relevantSnapshots.length === 0) return { assets: [], liabilities: [], date: null };
+    let pieDataInfo = { assets: [] as any[], liabilities: [] as any[], date: null as string | null };
 
-    // B. Find the latest date
-    const sortedDates = relevantSnapshots.map(s => s.date).sort();
-    const latestDate = sortedDates[sortedDates.length - 1];
+    if (relevantSnapshots.length > 0) {
+      const sortedDates = relevantSnapshots.map(s => s.date).sort();
+      const latestDate = sortedDates[sortedDates.length - 1];
 
-    // C. Get only items for that latest date
-    const latestItems = relevantSnapshots
-      .filter(s => s.date === latestDate)
-      .flatMap(s => s.items)
-      .filter(i => filterCategory === 'All' || i.category === filterCategory);
+      const latestItems = relevantSnapshots
+        .filter(s => s.date === latestDate)
+        .flatMap(s => s.items)
+        .filter(i => filterCategory === 'All' || i.category === filterCategory);
 
-    // D. Aggregate by Name (Sub-category level)
-    const aggByName: Record<string, number> = {};
-    latestItems.forEach(item => {
-      const rate = RATES[item.currency?.toUpperCase()] || 1;
-      const name = item.name.trim() || item.category;
-      aggByName[name] = (aggByName[name] || 0) + (item.value * rate);
-    });
+      const aggByName: Record<string, number> = {};
+      latestItems.forEach(item => {
+        const rate = RATES[item.currency?.toUpperCase()] || 1;
+        const name = item.name.trim() || item.category;
+        aggByName[name] = (aggByName[name] || 0) + (item.value * rate);
+      });
 
-    // E. Separate into Assets (>0) and Liabilities (<0)
-    const rawData = Object.keys(aggByName).map(key => ({
-      name: key,
-      value: aggByName[key]
-    }));
+      const rawData = Object.keys(aggByName).map(key => ({
+        name: key,
+        value: aggByName[key]
+      }));
 
-    // Assets: Positive values, sorted high to low
-    let assets = rawData
-      .filter(d => d.value > 0)
-      .map(d => ({ ...d, originalValue: d.value }))
-      .sort((a, b) => b.value - a.value);
+      let assets = rawData
+        .filter(d => d.value > 0)
+        .map(d => ({ ...d, originalValue: d.value }))
+        .sort((a, b) => b.value - a.value);
 
-    // Liabilities: Negative values, sorted by magnitude (most debt first)
-    // We convert value to absolute for the Pie Chart slice calculation, but keep originalValue for display
-    let liabilities = rawData
-      .filter(d => d.value < 0)
-      .map(d => ({ 
-        name: d.name, 
-        value: Math.abs(d.value), 
-        originalValue: d.value 
-      }))
-      .sort((a, b) => b.value - a.value);
+      let liabilities = rawData
+        .filter(d => d.value < 0)
+        .map(d => ({ 
+          name: d.name, 
+          value: Math.abs(d.value), 
+          originalValue: d.value 
+        }))
+        .sort((a, b) => b.value - a.value);
 
-    // F. Optimization: Group small items (Top 10 + Others) for Assets
-    if (assets.length > 10) {
-      const top10 = assets.slice(0, 10);
-      const others = assets.slice(10);
-      const otherTotal = others.reduce((sum, item) => sum + item.value, 0);
-      assets = [...top10, { name: 'Others', value: otherTotal, originalValue: otherTotal }];
-    }
-    // Optimization for Liabilities
-    if (liabilities.length > 10) {
-        const top10 = liabilities.slice(0, 10);
-        const others = liabilities.slice(10);
-        const otherTotalAbs = others.reduce((sum, item) => sum + item.value, 0);
-        const otherTotalOrig = others.reduce((sum, item) => sum + item.originalValue, 0);
-        liabilities = [...top10, { name: 'Others', value: otherTotalAbs, originalValue: otherTotalOrig }];
+      if (assets.length > 10) {
+        const top10 = assets.slice(0, 10);
+        const others = assets.slice(10);
+        const otherTotal = others.reduce((sum, item) => sum + item.value, 0);
+        assets = [...top10, { name: 'Others', value: otherTotal, originalValue: otherTotal }];
+      }
+      if (liabilities.length > 10) {
+          const top10 = liabilities.slice(0, 10);
+          const others = liabilities.slice(10);
+          const otherTotalAbs = others.reduce((sum, item) => sum + item.value, 0);
+          const otherTotalOrig = others.reduce((sum, item) => sum + item.originalValue, 0);
+          liabilities = [...top10, { name: 'Others', value: otherTotalAbs, originalValue: otherTotalOrig }];
+      }
+      pieDataInfo = { assets, liabilities, date: latestDate };
     }
 
-    return { assets, liabilities, date: latestDate };
-  }, [snapshots, filterCategory, filterMember, filterStartDate, filterEndDate]);
-
-  // Keys for Bar Chart
-  const dataKeys = useMemo(() => {
-    if (chartData.length === 0) return [];
     const allKeys = new Set<string>();
     chartData.forEach((d: any) => {
       Object.keys(d).forEach(k => {
         if (k !== 'date' && k !== 'total') allKeys.add(k);
       });
     });
-    return Array.from(allKeys);
-  }, [chartData]);
+    const dataKeys = Array.from(allKeys);
+
+    return { chartData, pieDataInfo, dataKeys };
+  }, [snapshots, dataSource, filterCategory, filterMember, filterStartDate, filterEndDate]);
+
+
+  // ================= INCOME DATA LOGIC =================
+  const incomeData = useMemo(() => {
+    if (dataSource !== 'income') return { chartData: [], pieData: [], kpi: { total: 0, monthlyAvg: 0, transactionCount: 0 }, barKeys: [] };
+
+    const byMonth: Record<string, { date: string; [key: string]: number | string }> = {};
+    const byCategory: Record<string, number> = {};
+    
+    let totalFiltered = 0;
+    let countInFiltered = 0;
+
+    incomeRecords.forEach(rec => {
+      if (filterMember !== 'All' && rec.familyMember !== filterMember) return;
+      if (filterCategory !== 'All' && rec.category !== filterCategory) return;
+      if (filterStartDate && rec.date < `${filterStartDate}-01`) return;
+      if (filterEndDate && rec.date > `${filterEndDate}-31`) return;
+
+      totalFiltered += rec.value;
+      countInFiltered++;
+
+      const monthKey = rec.date.substring(0, 7); 
+      if (!byMonth[monthKey]) {
+        byMonth[monthKey] = { date: monthKey };
+      }
+      byMonth[monthKey][rec.category] = (Number(byMonth[monthKey][rec.category]) || 0) + rec.value;
+      byCategory[rec.category] = (byCategory[rec.category] || 0) + rec.value;
+    });
+
+    const sortedMonths = Object.keys(byMonth).sort();
+    const chartData = sortedMonths.map(m => byMonth[m]);
+    
+    const pieData = Object.keys(byCategory).map(cat => ({
+      name: cat,
+      value: byCategory[cat]
+    })).sort((a, b) => b.value - a.value);
+
+    const divisor = Object.keys(byMonth).length || 1; 
+    const monthlyAvg = totalFiltered / divisor;
+
+    const keys = new Set<string>();
+    chartData.forEach(d => {
+      Object.keys(d).forEach(k => {
+        if (k !== 'date') keys.add(k);
+      });
+    });
+    const barKeys = Array.from(keys);
+
+    return {
+      chartData,
+      pieData,
+      kpi: { total: totalFiltered, monthlyAvg, transactionCount: countInFiltered },
+      barKeys
+    };
+  }, [incomeRecords, dataSource, filterMember, filterCategory, filterStartDate, filterEndDate]);
 
   // Auto-reset filters
   useEffect(() => {
     if (filterCategory !== 'All' && !usedCategories.includes(filterCategory)) setFilterCategory('All');
     if (filterMember !== 'All' && !usedMembers.includes(filterMember)) setFilterMember('All');
-  }, [usedCategories, usedMembers, filterCategory, filterMember]);
+  }, [usedCategories, usedMembers, filterCategory, filterMember, dataSource]);
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
@@ -235,13 +288,59 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
     setIsAnalyzing(false);
   };
 
+  // Construct Dynamic Title
+  const getDashboardTitle = () => {
+    const base = dataSource === 'assets' ? t.assetOverview : t.investmentIncomeOverview;
+    
+    if (filterMember === 'All') return base;
+    
+    if (language === 'zh') {
+      return `${filterMember}的${base}`;
+    } else {
+      // English
+      const prefix = filterMember === 'Me' ? 'My' : `${filterMember}'s`;
+      return `${prefix} ${base}`;
+    }
+  };
+
   return (
     <div className="space-y-6">
       
+      {/* Dashboard Specific Header */}
+      <header className="mb-8 flex justify-between items-center">
+         <div>
+           <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+             {getDashboardTitle()}
+           </h2>
+           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+             {dataSource === 'assets' ? 'Track, analyze, and optimize your wealth.' : t.incomeDesc}
+           </p>
+         </div>
+      </header>
+
       {/* Controls */}
       <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
         <div className="flex flex-wrap items-center gap-4">
             
+            {/* View Source Toggle */}
+            <div className="flex items-center gap-2 mr-2 border-r border-slate-200 dark:border-slate-700 pr-4">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.dataSource}:</span>
+                <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+                   <button 
+                     onClick={() => setDataSource('assets')}
+                     className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${dataSource === 'assets' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                   >
+                     {t.viewAssets}
+                   </button>
+                   <button 
+                     onClick={() => setDataSource('income')}
+                     className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${dataSource === 'income' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                   >
+                     {t.viewIncome}
+                   </button>
+                </div>
+            </div>
+
             {/* Family Member */}
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.familyMember}:</span>
@@ -305,14 +404,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
 
             <div className="flex-1 hidden xl:block"></div>
 
-            <Button onClick={handleAnalyze} isLoading={isAnalyzing} variant="primary" className="bg-indigo-600 hover:bg-indigo-700 w-full md:w-auto ml-auto md:ml-0">
-               ✨ {t.analyze}
-            </Button>
+            {dataSource === 'assets' && (
+                <Button onClick={handleAnalyze} isLoading={isAnalyzing} variant="primary" className="bg-indigo-600 hover:bg-indigo-700 w-full md:w-auto ml-auto md:ml-0">
+                ✨ {t.analyze}
+                </Button>
+            )}
         </div>
       </div>
 
-      {/* AI Analysis Result */}
-      {activeAnalysis && (
+      {/* AI Analysis Result (Assets Only) */}
+      {dataSource === 'assets' && activeAnalysis && (
         <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border-indigo-100 dark:border-indigo-800 animate-fade-in">
             <div className="prose prose-sm max-w-none text-slate-700 dark:text-slate-200">
                 <h3 className="text-indigo-800 dark:text-indigo-300 font-bold mb-2 flex items-center gap-2">
@@ -324,222 +425,348 @@ export const Dashboard: React.FC<DashboardProps> = ({ snapshots, language }) => 
         </Card>
       )}
 
-      {/* Main Net Worth Chart */}
-      <Card title={filterCategory === 'All' ? t.totalNetWorth + " (USD Normalized)" : `${filterCategory} Growth (USD Normalized)`} className="min-h-[400px]">
-        <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <defs>
-                        <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
-                    <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={10} />
-                    <YAxis stroke="#64748b" fontSize={12} tickFormatter={(val) => `$${val/1000}k`} />
-                    <Tooltip 
-                        contentStyle={{ backgroundColor: 'var(--tw-bg-opacity, #fff)', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                        formatter={(value: number) => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Approx USD']}
-                    />
-                    {filterCategory === 'All' ? (
-                         <Area type="monotone" dataKey="total" stroke="#3b82f6" fillOpacity={1} fill="url(#colorTotal)" strokeWidth={2} />
-                    ) : (
-                        <Area type="monotone" dataKey={dataKeys[0] || 'total'} stroke={getCategoryColor(filterCategory)} fill={getCategoryColor(filterCategory)} fillOpacity={0.3} strokeWidth={2} />
-                    )}
-                </AreaChart>
-            </ResponsiveContainer>
-        </div>
-      </Card>
+      {/* ======================= ASSETS VIEW ======================= */}
+      {dataSource === 'assets' && (
+          <div className="space-y-6 animate-fade-in">
+              {/* Main Net Worth Chart */}
+              <Card title={filterCategory === 'All' ? t.totalNetWorth + " (USD Normalized)" : `${filterCategory} Growth (USD Normalized)`} className="min-h-[400px]">
+                <div className="h-[350px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={assetData.chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
+                            <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={10} />
+                            <YAxis stroke="#64748b" fontSize={12} tickFormatter={(val) => `$${val/1000}k`} />
+                            <Tooltip 
+                                contentStyle={{ backgroundColor: 'var(--tw-bg-opacity, #fff)', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                                formatter={(value: number) => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Approx USD']}
+                            />
+                            {filterCategory === 'All' ? (
+                                <Area type="monotone" dataKey="total" stroke="#3b82f6" fillOpacity={1} fill="url(#colorTotal)" strokeWidth={2} />
+                            ) : (
+                                <Area type="monotone" dataKey={assetData.dataKeys[0] || 'total'} stroke={getCategoryColor(filterCategory)} fill={getCategoryColor(filterCategory)} fillOpacity={0.3} strokeWidth={2} />
+                            )}
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+              </Card>
 
-      {/* Breakdown Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Pie Chart: Detailed Item Breakdown */}
-        <Card title={t.assetBreakdown} className="flex flex-col">
-           {/* Date Indicator */}
-           {pieDataInfo.date && (
-               <div className="mb-2 self-start bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded text-sm font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600">
-                 {pieDataInfo.date}
-               </div>
-           )}
+              {/* Breakdown Charts Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Pie Chart */}
+                <Card title={t.assetBreakdown} className="flex flex-col">
+                   {assetData.pieDataInfo.date && (
+                       <div className="mb-2 self-start bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded text-sm font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600">
+                         {assetData.pieDataInfo.date}
+                       </div>
+                   )}
 
-           <div className={`flex-1 w-full grid gap-4 ${pieDataInfo.assets.length > 0 && pieDataInfo.liabilities.length > 0 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-             
-             {/* Assets Pie */}
-             {pieDataInfo.assets.length > 0 && (
-               <div className="h-[350px] relative">
-                  <h4 className="text-center font-semibold text-emerald-600 dark:text-emerald-400 mb-2">Assets</h4>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                      <Pie
-                        activeIndex={activeIndexAsset}
-                        data={pieDataInfo.assets}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={0}
-                        outerRadius={90}
-                        dataKey="value"
-                        onMouseEnter={(_, idx) => setActiveIndexAsset(idx)}
-                        paddingAngle={2}
-                        label={renderCustomLabel}
-                        labelLine={true}
-                      >
-                        {pieDataInfo.assets.map((entry, index) => (
-                          <Cell key={`cell-a-${index}`} fill={getCategoryColor(entry.name)} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-               </div>
-             )}
+                   <div className={`flex-1 w-full grid gap-4 ${assetData.pieDataInfo.assets.length > 0 && assetData.pieDataInfo.liabilities.length > 0 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                     
+                     {/* Assets */}
+                     {assetData.pieDataInfo.assets.length > 0 && (
+                       <div className="h-[350px] relative">
+                          <h4 className="text-center font-semibold text-emerald-600 dark:text-emerald-400 mb-2">Assets</h4>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                              <Pie
+                                activeIndex={activeIndexAsset}
+                                data={assetData.pieDataInfo.assets}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={0}
+                                outerRadius={90}
+                                dataKey="value"
+                                onMouseEnter={(_, idx) => setActiveIndexAsset(idx)}
+                                paddingAngle={2}
+                                label={renderCustomLabel}
+                                labelLine={true}
+                              >
+                                {assetData.pieDataInfo.assets.map((entry, index) => (
+                                  <Cell key={`cell-a-${index}`} fill={getCategoryColor(entry.name)} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                       </div>
+                     )}
 
-             {/* Liabilities Pie */}
-             {pieDataInfo.liabilities.length > 0 && (
-               <div className="h-[350px] relative">
-                  <h4 className="text-center font-semibold text-red-600 dark:text-red-400 mb-2">Liabilities</h4>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                      <Pie
-                        activeIndex={activeIndexLiab}
-                        data={pieDataInfo.liabilities}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={0}
-                        outerRadius={90}
-                        dataKey="value"
-                        onMouseEnter={(_, idx) => setActiveIndexLiab(idx)}
-                        paddingAngle={2}
-                        label={renderCustomLabel}
-                        labelLine={true}
-                      >
-                        {pieDataInfo.liabilities.map((entry, index) => (
-                          <Cell key={`cell-l-${index}`} fill={getCategoryColor(entry.name)} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-               </div>
-             )}
-             
-             {pieDataInfo.assets.length === 0 && pieDataInfo.liabilities.length === 0 && (
-               <div className="h-[200px] flex items-center justify-center text-slate-400 text-sm">
-                 No data to display for this period.
-               </div>
-             )}
-           </div>
-        </Card>
+                     {/* Liabilities */}
+                     {assetData.pieDataInfo.liabilities.length > 0 && (
+                       <div className="h-[350px] relative">
+                          <h4 className="text-center font-semibold text-red-600 dark:text-red-400 mb-2">Liabilities</h4>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                              <Pie
+                                activeIndex={activeIndexLiab}
+                                data={assetData.pieDataInfo.liabilities}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={0}
+                                outerRadius={90}
+                                dataKey="value"
+                                onMouseEnter={(_, idx) => setActiveIndexLiab(idx)}
+                                paddingAngle={2}
+                                label={renderCustomLabel}
+                                labelLine={true}
+                              >
+                                {assetData.pieDataInfo.liabilities.map((entry, index) => (
+                                  <Cell key={`cell-l-${index}`} fill={getCategoryColor(entry.name)} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                       </div>
+                     )}
+                     
+                     {assetData.pieDataInfo.assets.length === 0 && assetData.pieDataInfo.liabilities.length === 0 && (
+                       <div className="h-[200px] flex items-center justify-center text-slate-400 text-sm">
+                         No data to display for this period.
+                       </div>
+                     )}
+                   </div>
+                </Card>
 
-        {/* Stacked Bar Chart */}
-        <Card title={t.assetAllocation}>
-            <div className="h-[450px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} stackOffset="sign">
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.5} />
-                        <XAxis dataKey="date" fontSize={10} stroke="#64748b" />
-                        <YAxis fontSize={10} tickFormatter={(val) => `${val/1000}k`} stroke="#64748b" />
-                        <Tooltip formatter={(value: number) => `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-                        <Legend wrapperStyle={{ fontSize: '10px' }} />
-                        <ReferenceLine y={0} stroke="#000" strokeWidth={2} />
-                        {dataKeys.slice(0, 10).map((key, index) => (
-                            <Bar key={key} dataKey={key} stackId="a" fill={getCategoryColor(key)} />
-                        ))}
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
-        </Card>
+                {/* Stacked Bar Chart */}
+                <Card title={t.assetAllocation}>
+                    <div className="h-[450px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={assetData.chartData} stackOffset="sign">
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.5} />
+                                <XAxis dataKey="date" fontSize={10} stroke="#64748b" />
+                                <YAxis fontSize={10} tickFormatter={(val) => `${val/1000}k`} stroke="#64748b" />
+                                <Tooltip formatter={(value: number) => `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+                                <Legend wrapperStyle={{ fontSize: '10px' }} />
+                                <ReferenceLine y={0} stroke="#000" strokeWidth={2} />
+                                {assetData.dataKeys.slice(0, 10).map((key, index) => (
+                                    <Bar key={key} dataKey={key} stackId="a" fill={getCategoryColor(key)} />
+                                ))}
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
 
-        {/* Recent List */}
-        <Card title={t.recentComposition} className="lg:col-span-2">
-             <div className="flex flex-col">
-                 {snapshots.length > 0 && (
-                     <div className="w-full space-y-2">
-                         {(() => {
-                           const lastDate = chartData[chartData.length - 1]?.date;
-                           if (!lastDate) return <p className="text-slate-400 p-4">No data in selected range</p>;
+                {/* Recent List */}
+                <Card title={t.recentComposition} className="lg:col-span-2">
+                     <div className="flex flex-col">
+                         {snapshots.length > 0 && (
+                             <div className="w-full space-y-2">
+                                 {(() => {
+                                   const lastDate = assetData.chartData[assetData.chartData.length - 1]?.date;
+                                   if (!lastDate) return <p className="text-slate-400 p-4">No data in selected range</p>;
 
-                           // Get all items
-                           const allItems = snapshots
-                              .filter(s => s.date === lastDate && (filterMember === 'All' || s.familyMember === filterMember))
-                              .flatMap(s => s.items)
-                              .filter(i => filterCategory === 'All' || i.category === filterCategory);
-                           
-                           // Split into Assets and Liabilities
-                           const positiveItems = allItems.filter(i => i.value > 0).sort((a,b) => b.value - a.value);
-                           const negativeItems = allItems.filter(i => i.value < 0).sort((a,b) => a.value - b.value); // Sort most debt to least debt (ascending)
+                                   const allItems = snapshots
+                                      .filter(s => s.date === lastDate && (filterMember === 'All' || s.familyMember === filterMember))
+                                      .flatMap(s => s.items)
+                                      .filter(i => filterCategory === 'All' || i.category === filterCategory);
+                                   
+                                   const positiveItems = allItems.filter(i => i.value > 0).sort((a,b) => b.value - a.value);
+                                   const negativeItems = allItems.filter(i => i.value < 0).sort((a,b) => a.value - b.value);
 
-                           // Calculate Subtotal (Normalized to USD for consistent summation)
-                           const subTotalNormalized = allItems.reduce((acc, item) => {
-                             const rate = RATES[item.currency?.toUpperCase()] || 1;
-                             return acc + (item.value * rate);
-                           }, 0);
-                           
-                           const renderItemRow = (item: any, idx: string | number) => (
-                               <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-700/50 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-100 dark:border-slate-700">
-                                   <div className="flex items-center gap-2 overflow-hidden">
-                                       <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getCategoryColor(item.category) }}></div>
-                                       <div className="flex flex-col min-w-0">
-                                          <span className="text-sm text-slate-700 dark:text-slate-200 font-medium truncate" title={item.name}>{item.name}</span>
-                                          <span className="text-[10px] text-slate-400 uppercase">{item.category}</span>
+                                   const subTotalNormalized = allItems.reduce((acc, item) => {
+                                     const rate = RATES[item.currency?.toUpperCase()] || 1;
+                                     return acc + (item.value * rate);
+                                   }, 0);
+                                   
+                                   const renderItemRow = (item: any, idx: string | number) => (
+                                       <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-700/50 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-100 dark:border-slate-700">
+                                           <div className="flex items-center gap-2 overflow-hidden">
+                                               <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getCategoryColor(item.category) }}></div>
+                                               <div className="flex flex-col min-w-0">
+                                                  <span className="text-sm text-slate-700 dark:text-slate-200 font-medium truncate" title={item.name}>{item.name}</span>
+                                                  <span className="text-[10px] text-slate-400 uppercase">{item.category}</span>
+                                               </div>
+                                           </div>
+                                           <span className={`text-sm font-mono whitespace-nowrap ml-2 ${item.value < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                                             {item.value.toLocaleString()} <span className="text-[10px] text-slate-500">{item.currency}</span>
+                                           </span>
                                        </div>
-                                   </div>
-                                   <span className={`text-sm font-mono whitespace-nowrap ml-2 ${item.value < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                                     {item.value.toLocaleString()} <span className="text-[10px] text-slate-500">{item.currency}</span>
-                                   </span>
-                               </div>
-                           );
+                                   );
 
-                           return (
-                             <>
-                               <div className="flex justify-between items-end mb-4 pb-2 border-b border-slate-100 dark:border-slate-700">
-                                  <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                                     Snapshot Date: <span className="text-slate-800 dark:text-slate-200 font-bold">{lastDate}</span>
-                                  </div>
-                                  <div className="text-right">
-                                     <span className="text-xs text-slate-400 uppercase tracking-wide">Net Worth (Approx USD)</span>
-                                     <div className={`text-xl font-bold font-mono ${subTotalNormalized >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                       ${subTotalNormalized.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                     </div>
-                                  </div>
-                               </div>
+                                   return (
+                                     <>
+                                       <div className="flex justify-between items-end mb-4 pb-2 border-b border-slate-100 dark:border-slate-700">
+                                          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                             Snapshot Date: <span className="text-slate-800 dark:text-slate-200 font-bold">{lastDate}</span>
+                                          </div>
+                                          <div className="text-right">
+                                             <span className="text-xs text-slate-400 uppercase tracking-wide">Net Worth (Approx USD)</span>
+                                             <div className={`text-xl font-bold font-mono ${subTotalNormalized >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                               ${subTotalNormalized.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                             </div>
+                                          </div>
+                                       </div>
 
-                               {/* Assets Section */}
-                               {positiveItems.length > 0 && (
-                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                       {positiveItems.map((item, idx) => renderItemRow(item, `pos-${idx}`))}
-                                   </div>
-                               )}
+                                       {positiveItems.length > 0 && (
+                                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                               {positiveItems.map((item, idx) => renderItemRow(item, `pos-${idx}`))}
+                                           </div>
+                                       )}
 
-                               {/* Divider if both exist */}
-                               {positiveItems.length > 0 && negativeItems.length > 0 && (
-                                   <div className="py-4 flex items-center gap-4">
-                                       <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
-                                       <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Liabilities</span>
-                                       <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
-                                   </div>
-                               )}
+                                       {positiveItems.length > 0 && negativeItems.length > 0 && (
+                                           <div className="py-4 flex items-center gap-4">
+                                               <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+                                               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Liabilities</span>
+                                               <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+                                           </div>
+                                       )}
 
-                               {/* Liabilities Section */}
-                               {negativeItems.length > 0 && (
-                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                       {negativeItems.map((item, idx) => renderItemRow(item, `neg-${idx}`))}
-                                   </div>
-                               )}
-                             </>
-                           );
-                         })()}
+                                       {negativeItems.length > 0 && (
+                                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                               {negativeItems.map((item, idx) => renderItemRow(item, `neg-${idx}`))}
+                                           </div>
+                                       )}
+                                     </>
+                                   );
+                                 })()}
+                             </div>
+                         )}
+                         {snapshots.length === 0 && (
+                             <div className="text-center py-10">
+                                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                                    {t.startByAdding} <span className="font-medium text-blue-600 dark:text-blue-400">{t.newSnapshot}</span>.
+                                </p>
+                             </div>
+                         )}
                      </div>
-                 )}
-                 {snapshots.length === 0 && (
-                     <div className="text-center py-10">
-                        <p className="text-slate-500 dark:text-slate-400 text-sm">
-                            {t.startByAdding} <span className="font-medium text-blue-600 dark:text-blue-400">{t.newSnapshot}</span>.
-                        </p>
-                     </div>
-                 )}
-             </div>
-        </Card>
-      </div>
+                </Card>
+              </div>
+          </div>
+      )}
+
+      {/* ======================= INCOME VIEW ======================= */}
+      {dataSource === 'income' && (
+          <div className="space-y-6 animate-fade-in">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-100 dark:border-emerald-800">
+                  <div className="text-emerald-800 dark:text-emerald-300">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider mb-1">{t.totalIncome}</h3>
+                    <p className="text-3xl font-bold font-mono">${incomeData.kpi.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                  </div>
+                </Card>
+                
+                <Card>
+                  <div className="text-slate-800 dark:text-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Transactions</h3>
+                    <p className="text-3xl font-bold font-mono">{incomeData.kpi.transactionCount}</p>
+                  </div>
+                </Card>
+                
+                <Card>
+                  <div className="text-slate-800 dark:text-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t.monthlyAvg}</h3>
+                    <p className="text-3xl font-bold font-mono">${incomeData.kpi.monthlyAvg.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Bar Chart */}
+                <Card title={t.incomeHistory} className="lg:col-span-2">
+                   <div className="h-[350px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={incomeData.chartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
+                        <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
+                        <YAxis stroke="#64748b" fontSize={12} tickFormatter={(val) => `${val/1000}k`} />
+                        <Tooltip 
+                          cursor={{ fill: 'transparent' }}
+                          contentStyle={{ backgroundColor: 'var(--tw-bg-opacity, #fff)', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                          formatter={(value: number) => `$${value.toLocaleString()}`}
+                        />
+                        <Legend />
+                        {incomeData.barKeys.map((key, index) => (
+                          <Bar key={key} dataKey={key} stackId="a" fill={getCategoryColor(key)} />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                   </div>
+                </Card>
+
+                {/* Pie Chart */}
+                <Card title={t.incomeBreakdown}>
+                   <div className="h-[350px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={incomeData.pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={0}
+                          outerRadius={100}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {incomeData.pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name)} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                   </div>
+                </Card>
+              </div>
+
+              {/* Recent Records Table */}
+              <Card title={t.recentIncome}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
+                    <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs uppercase font-semibold text-slate-500 dark:text-slate-400">
+                      <tr>
+                        <th className="px-4 py-3">{t.date}</th>
+                        <th className="px-4 py-3">{t.familyMember}</th>
+                        <th className="px-4 py-3">{t.category}</th>
+                        <th className="px-4 py-3">{t.source}</th>
+                        <th className="px-4 py-3 text-right">{t.value}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      {[...incomeRecords]
+                         // Apply filters here for table too
+                        .filter(rec => filterMember === 'All' || rec.familyMember === filterMember)
+                        .filter(rec => filterCategory === 'All' || rec.category === filterCategory)
+                        .filter(rec => !filterStartDate || rec.date >= `${filterStartDate}-01`)
+                        .filter(rec => !filterEndDate || rec.date <= `${filterEndDate}-31`)
+                        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .slice(0, 10) // Show last 10
+                        .map(rec => (
+                        <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                          <td className="px-4 py-3 whitespace-nowrap">{rec.date}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">{rec.familyMember || '-'}</td>
+                          <td className="px-4 py-3">
+                            <span className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs" style={{ color: getCategoryColor(rec.category), backgroundColor: getCategoryColor(rec.category) + '20' }}>
+                              {rec.category}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-200">{rec.name}</td>
+                          <td className="px-4 py-3 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                            +${rec.value.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                      {incomeRecords.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                            {t.noRecords}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+          </div>
+      )}
     </div>
   );
 };

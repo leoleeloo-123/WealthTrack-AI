@@ -24,6 +24,7 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
 }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [familyMember, setFamilyMember] = useState(familyMembers[0] || 'Me');
+  const [note, setNote] = useState(''); // Added Note state
   
   // We use a simplified internal structure for the form state
   const [items, setItems] = useState<{ id: string; category: string; name: string; value: number; currency: string }[]>([
@@ -56,7 +57,8 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
         name: item.name || item.category || 'Income',
         value: Number(item.value),
         currency: item.currency,
-        familyMember: familyMember
+        familyMember: familyMember,
+        note: note // Apply note to all records in this batch
       }));
 
     onSave(newRecords);
@@ -71,7 +73,8 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             {t.newIncomeRecord}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
+        {/* Updated grid to 3 columns to match SnapshotForm and include Note */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">{t.date}</label>
             <input 
@@ -91,6 +94,16 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
             >
               {familyMembers.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
+          </div>
+          <div>
+             <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">{t.note}</label>
+             <input 
+              type="text" 
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t.notePlaceholder}
+              className={inputStyle}
+             />
           </div>
         </div>
       </div>

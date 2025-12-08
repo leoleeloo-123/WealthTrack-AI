@@ -260,8 +260,12 @@ const App: React.FC = () => {
 
   const handleDeleteSnapshot = (id: string) => { setSnapshots(prev => prev.filter(s => s.id !== id)); };
 
-  const handleDeleteIncomeGroup = (date: string) => {
-     setIncomeRecords(prev => prev.filter(r => r.date !== date));
+  const handleDeleteIncomeGroup = (date: string, familyMember?: string) => {
+     if (familyMember) {
+        setIncomeRecords(prev => prev.filter(r => !(r.date === date && r.familyMember === familyMember)));
+     } else {
+        setIncomeRecords(prev => prev.filter(r => r.date !== date));
+     }
   };
 
   const handleClearAllData = () => {

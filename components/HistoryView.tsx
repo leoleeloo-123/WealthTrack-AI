@@ -11,7 +11,7 @@ interface HistoryViewProps {
   familyMembers: string[];      // Kept for prop compatibility, but unused for filtering options
   onEdit: (s: Snapshot) => void;
   onDelete: (id: string) => void;
-  onDeleteIncome: (date: string) => void;
+  onDeleteIncome: (date: string, familyMember?: string) => void;
   language: Language;
 }
 
@@ -49,6 +49,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       });
     } else {
       incomeRecords.forEach(r => {
+        if (r.familyMember) members.add(r.familyMember);
         if (r.date) months.add(r.date.substring(0, 7));
         if (r.category) cats.add(r.category);
       });
@@ -73,27 +74,33 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             return true;
         });
     } else {
-        // Group Income by Date to mimic Snapshots structure
+        // Group Income by Date AND Family Member to mimic Snapshots structure
         const grouped: Record<string, IncomeRecord[]> = {};
+        
         incomeRecords.forEach(r => {
-            if (!grouped[r.date]) grouped[r.date] = [];
-            grouped[r.date].push(r);
+            // Create a unique key for grouping
+            const key = `${r.date}::${r.familyMember}`;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(r);
         });
 
-        const groups = Object.keys(grouped).map(date => {
-            const items = grouped[date];
+        const groups = Object.keys(grouped).map(key => {
+            const [date, member] = key.split('::');
+            const items = grouped[key];
             const total = items.reduce((sum, i) => sum + i.value, 0);
             return {
-                id: date, // Use date as ID for the group
+                id: key, // Use composite key as ID
                 date,
-                familyMember: 'Income', // Placeholder
-                items: items, // IncomeRecord structure matches generic usage enough or we map it
-                totalValue: total
+                familyMember: member,
+                items: items, 
+                totalValue: total,
+                // Check if any note exists in the group and use first one found
+                note: items.find(i => i.note)?.note
             };
         }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         return groups.filter(g => {
-            // No family member filter for Income
+            if (filterMember !== 'All' && g.familyMember !== filterMember) return false;
             // Category filter: Show group if any item matches
             if (filterCategory !== 'All' && !g.items.some(i => i.category === filterCategory)) return false;
             if (filterStartDate && g.date < `${filterStartDate}-01`) return false;
@@ -134,20 +141,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 </div>
             </div>
 
-             {/* Family Member (Assets Only) */}
-             {dataSource === 'assets' && (
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.familyMember}:</span>
-                    <select 
-                        value={filterMember} 
-                        onChange={(e) => setFilterMember(e.target.value)}
-                        className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
-                    >
-                        <option value="All">{t.allFamily}</option>
-                        {usedMembers.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                </div>
-             )}
+             {/* Family Member (Now for BOTH Assets and Income) */}
+             <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.familyMember}:</span>
+                <select 
+                    value={filterMember} 
+                    onChange={(e) => setFilterMember(e.target.value)}
+                    className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+                >
+                    <option value="All">{t.allFamily}</option>
+                    {usedMembers.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+            </div>
 
             {/* Category */}
             <div className="flex items-center gap-2">
@@ -188,7 +193,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 </select>
             </div>
 
-             {(filterStartDate || filterEndDate || filterCategory !== 'All' || (dataSource === 'assets' && filterMember !== 'All')) && (
+             {(filterStartDate || filterEndDate || filterCategory !== 'All' || filterMember !== 'All') && (
                <button 
                  onClick={() => { 
                    setFilterStartDate(''); 
@@ -212,11 +217,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                <div>
                  <div className="flex items-center gap-2 mb-1">
                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{group.date}</h3>
+                   {/* Family Member Badge for BOTH types now */}
                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${dataSource === 'assets' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
-                     {dataSource === 'assets' ? (group.familyMember || 'Me') : t.investmentIncome}
+                     {group.familyMember || 'Me'}
                    </span>
                  </div>
-                 {dataSource === 'assets' && (group as Snapshot).note && <p className="text-sm text-slate-500 dark:text-slate-400 italic">{(group as Snapshot).note}</p>}
+                 {/* Show Note if exists */}
+                 {group.note && <p className="text-sm text-slate-500 dark:text-slate-400 italic">{group.note}</p>}
                </div>
                <div className="flex items-center gap-4 mt-2 md:mt-0">
                  <div className="text-right">
@@ -243,7 +250,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                         onClick={(e) => { 
                             e.stopPropagation(); 
                             if (dataSource === 'assets') onDelete(group.id);
-                            else onDeleteIncome(group.date);
+                            else onDeleteIncome(group.date, group.familyMember);
                         }}
                         className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
                         title={t.delete}

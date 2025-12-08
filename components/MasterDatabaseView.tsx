@@ -55,7 +55,7 @@ export const MasterDatabaseView: React.FC<MasterDatabaseViewProps> = ({
     } else {
       // Income Records
       incomeRecords.forEach(r => {
-        // Income doesn't have family member field in current schema
+        if (r.familyMember) members.add(r.familyMember);
         if (r.date) months.add(r.date.substring(0, 7));
         if (r.category) cats.add(r.category);
       });
@@ -80,7 +80,7 @@ export const MasterDatabaseView: React.FC<MasterDatabaseViewProps> = ({
       });
     } else {
       return incomeRecords.filter(r => {
-        // Income doesn't have family member filter support currently
+        if (filterMember !== 'All' && r.familyMember !== filterMember) return false;
         if (filterStartDate && r.date < `${filterStartDate}-01`) return false;
         if (filterEndDate && r.date > `${filterEndDate}-31`) return false;
         if (filterCategory !== 'All' && r.category !== filterCategory) return false;
@@ -178,20 +178,18 @@ export const MasterDatabaseView: React.FC<MasterDatabaseViewProps> = ({
                 </div>
             </div>
 
-            {/* Family Member (Only for Assets) */}
-            {dataSource === 'assets' && (
-              <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.familyMember}:</span>
-                  <select 
-                      value={filterMember} 
-                      onChange={(e) => setFilterMember(e.target.value)}
-                      className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
-                  >
-                      <option value="All">{t.allFamily}</option>
-                      {usedMembers.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-              </div>
-            )}
+            {/* Family Member (Now for BOTH) */}
+            <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">{t.familyMember}:</span>
+                <select 
+                    value={filterMember} 
+                    onChange={(e) => setFilterMember(e.target.value)}
+                    className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded text-sm outline-none focus:ring-2 focus:ring-accent"
+                >
+                    <option value="All">{t.allFamily}</option>
+                    {usedMembers.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+            </div>
 
             {/* Category */}
             <div className="flex items-center gap-2">
@@ -232,7 +230,7 @@ export const MasterDatabaseView: React.FC<MasterDatabaseViewProps> = ({
                 </select>
             </div>
 
-             {(filterStartDate || filterEndDate || filterCategory !== 'All' || (dataSource === 'assets' && filterMember !== 'All')) && (
+             {(filterStartDate || filterEndDate || filterCategory !== 'All' || filterMember !== 'All') && (
                <button 
                  onClick={() => { 
                    setFilterStartDate(''); 
@@ -253,7 +251,7 @@ export const MasterDatabaseView: React.FC<MasterDatabaseViewProps> = ({
       <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col relative">
         <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-               {dataSource === 'assets' ? t.masterDatabase : `${t.investmentIncome} Database`}
+               {dataSource === 'assets' ? t.assetDb : t.incomeDb}
              </h3>
              <span className="text-xs text-slate-500 italic">{t.normalizedNote}</span>
         </div>

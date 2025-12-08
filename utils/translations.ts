@@ -65,6 +65,8 @@ export const translations: Translations = {
     viewAssets: "View Assets",
     viewIncome: "View Income",
     dataSource: "Data Source",
+    assetDb: "Asset Snapshot Database",
+    incomeDb: "Investment Income Database",
 
     // Investment Income
     incomeOverview: "Income Overview",
@@ -201,6 +203,8 @@ export const translations: Translations = {
     viewAssets: "查看资产",
     viewIncome: "查看收入",
     dataSource: "数据来源",
+    assetDb: "资产快照数据库",
+    incomeDb: "投资收入数据库",
 
     // Investment Income
     incomeOverview: "收入概览",
